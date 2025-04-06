@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Droplet, Flask, AlertCircle } from 'lucide-react';
+import { Droplet, Beaker, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MotorStatus } from '@/hooks/usePlantData';
@@ -140,7 +139,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         <div className="p-4 border rounded-lg bg-gradient-to-r from-purple-50 to-transparent dark:from-purple-950/20 dark:to-transparent">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Flask className="h-5 w-5 text-plant-fertilizer" />
+              <Beaker className="h-5 w-5 text-plant-fertilizer" />
               <h3 className="font-medium">Fertilizer Motor</h3>
             </div>
             <div className="flex items-center gap-2">

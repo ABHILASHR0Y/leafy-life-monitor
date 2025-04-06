@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Droplet, Flask, Clock, Calendar } from 'lucide-react';
+import { Droplet, Beaker, Clock, Calendar } from 'lucide-react';
 import { MotorStatus as MotorStatusType } from '@/hooks/usePlantData';
 import StatusCard from './StatusCard';
 
@@ -17,7 +16,6 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
   lastWatered,
   lastFertilized
 }) => {
-  // Format the last watered time
   const getLastWateredText = () => {
     if (!lastWatered) return 'Never';
     
@@ -38,7 +36,6 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
     }
   };
   
-  // Format the last fertilized time
   const getLastFertilizedText = () => {
     if (!lastFertilized) return 'Never';
     
@@ -54,28 +51,24 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
     }
   };
   
-  // Get water motor status
   const getWaterStatus = () => {
     if (waterMotorStatus === 'active') return 'Active';
     if (waterMotorStatus === 'error') return 'Error';
     return 'Idle';
   };
   
-  // Get water status color
   const getWaterStatusType = (): 'default' | 'success' | 'warning' | 'danger' => {
     if (waterMotorStatus === 'active') return 'success';
     if (waterMotorStatus === 'error') return 'danger';
     return 'default';
   };
   
-  // Get fertilizer motor status
   const getFertilizerStatus = () => {
     if (fertilizerMotorStatus === 'active') return 'Active';
     if (fertilizerMotorStatus === 'error') return 'Error';
     return 'Idle';
   };
   
-  // Get fertilizer status color
   const getFertilizerStatusType = (): 'default' | 'success' | 'warning' | 'danger' => {
     if (fertilizerMotorStatus === 'active') return 'success';
     if (fertilizerMotorStatus === 'error') return 'danger';
@@ -102,7 +95,7 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
       <StatusCard 
         title="Fertilizer Motor"
         value={getFertilizerStatus()}
-        icon={Flask}
+        icon={Beaker}
         status={getFertilizerStatusType()}
         iconColor="text-plant-fertilizer"
       />
