@@ -9,7 +9,15 @@ import { usePlantData } from '@/hooks/usePlantData';
 import { Leaf } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-  const { data, activateWaterMotor, activateFertilizerMotor, isMoistureCritical } = usePlantData();
+  const { 
+    data, 
+    activateWaterMotor, 
+    activateFertilizerMotor, 
+    toggleWateringMode,
+    setWateringDuration,
+    setFertilizerDuration,
+    isMoistureCritical 
+  } = usePlantData();
   
   return (
     <div className="container py-6">
@@ -41,8 +49,14 @@ const Dashboard: React.FC = () => {
         <ControlPanel 
           waterMotorStatus={data.waterMotorStatus}
           fertilizerMotorStatus={data.fertilizerMotorStatus}
+          wateringMode={data.wateringMode}
+          wateringDuration={data.wateringDuration}
+          fertilizerDuration={data.fertilizerDuration}
           onActivateWater={activateWaterMotor}
           onActivateFertilizer={activateFertilizerMotor}
+          onToggleMode={toggleWateringMode}
+          onChangeWaterDuration={setWateringDuration}
+          onChangeFertilizerDuration={setFertilizerDuration}
           lastWatered={data.lastWatered}
           lastFertilized={data.lastFertilized}
         />

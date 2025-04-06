@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 
 export type MotorStatus = 'idle' | 'active' | 'error';
+export type WateringMode = 'automatic' | 'manual';
 
 export interface PlantData {
   currentMoisture: number;
@@ -9,6 +11,9 @@ export interface PlantData {
   fertilizerMotorStatus: MotorStatus;
   lastWatered: Date | null;
   lastFertilized: Date | null;
+  wateringMode: WateringMode;
+  wateringDuration: number; // in seconds
+  fertilizerDuration: number; // in seconds
   historyData: Array<{
     timestamp: Date;
     moisture: number;
@@ -26,6 +31,9 @@ export function usePlantData() {
     fertilizerMotorStatus: 'idle',
     lastWatered: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
     lastFertilized: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+    wateringMode: 'manual', // Default to manual mode
+    wateringDuration: 10, // Default 10 seconds
+    fertilizerDuration: 10, // Default 10 seconds
     historyData: []
   });
 
@@ -69,8 +77,9 @@ export function usePlantData() {
         // Keep within bounds
         newMoisture = Math.max(0, Math.min(100, newMoisture));
         
-        // Auto-activate water motor if moisture falls below minimum threshold
-        const shouldActivateWater = newMoisture < prev.optimalRange[0] && 
+        // Auto-activate water motor if in automatic mode and moisture falls below threshold
+        const shouldActivateWater = prev.wateringMode === 'automatic' && 
+                                   newMoisture <= 0 && 
                                    prev.waterMotorStatus === 'idle';
         
         return {
@@ -86,7 +95,7 @@ export function usePlantData() {
 
   // Simulate motor activations
   useEffect(() => {
-    // If water motor is active, run for 5 seconds then turn off
+    // If water motor is active, run for specified duration then turn off
     if (data.waterMotorStatus === 'active') {
       const timer = setTimeout(() => {
         setData(prev => ({
@@ -95,7 +104,7 @@ export function usePlantData() {
           lastWatered: new Date(),
           currentMoisture: Math.min(prev.currentMoisture + 15, 100) // Increase moisture
         }));
-      }, 5000);
+      }, data.wateringDuration * 1000);
       
       return () => clearTimeout(timer);
     }
@@ -108,11 +117,11 @@ export function usePlantData() {
           fertilizerMotorStatus: 'idle',
           lastFertilized: new Date()
         }));
-      }, 5000);
+      }, data.fertilizerDuration * 1000);
       
       return () => clearTimeout(timer);
     }
-  }, [data.waterMotorStatus, data.fertilizerMotorStatus]);
+  }, [data.waterMotorStatus, data.fertilizerMotorStatus, data.wateringDuration, data.fertilizerDuration]);
 
   // Function to manually activate water motor
   const activateWaterMotor = () => {
@@ -130,6 +139,30 @@ export function usePlantData() {
     }));
   };
 
+  // Function to toggle watering mode
+  const toggleWateringMode = () => {
+    setData(prev => ({
+      ...prev,
+      wateringMode: prev.wateringMode === 'automatic' ? 'manual' : 'automatic'
+    }));
+  };
+
+  // Function to update watering duration
+  const setWateringDuration = (duration: number) => {
+    setData(prev => ({
+      ...prev,
+      wateringDuration: duration
+    }));
+  };
+
+  // Function to update fertilizer duration
+  const setFertilizerDuration = (duration: number) => {
+    setData(prev => ({
+      ...prev,
+      fertilizerDuration: duration
+    }));
+  };
+
   // Check if moisture is critically low (for alerts)
   const isMoistureCritical = data.currentMoisture < data.optimalRange[0] * 0.8;
 
@@ -137,6 +170,9 @@ export function usePlantData() {
     data,
     activateWaterMotor,
     activateFertilizerMotor,
+    toggleWateringMode,
+    setWateringDuration,
+    setFertilizerDuration,
     isMoistureCritical
   };
 }
