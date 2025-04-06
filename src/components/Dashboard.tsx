@@ -6,6 +6,7 @@ import HistoryChart from './HistoryChart';
 import MotorStatus from './MotorStatus';
 import NotificationSystem from './NotificationSystem';
 import ArduinoConnection from './ArduinoConnection';
+import PlantConfigCard from './PlantConfigCard';
 import { usePlantData } from '@/hooks/usePlantData';
 import { Leaf } from 'lucide-react';
 
@@ -17,6 +18,9 @@ const Dashboard: React.FC = () => {
     toggleWateringMode,
     setWateringDuration,
     setFertilizerDuration,
+    setWateringFrequency,
+    setCustomWateringDays,
+    setOptimalMoistureRange,
     isMoistureCritical,
     updateFromArduino 
   } = usePlantData();
@@ -79,6 +83,19 @@ const Dashboard: React.FC = () => {
         />
         
         <HistoryChart data={data.historyData} />
+      </div>
+      
+      {/* Plant Config Card */}
+      <div className="mt-6">
+        <PlantConfigCard
+          optimalRange={data.optimalRange}
+          wateringFrequency={data.wateringFrequency}
+          customWateringDays={data.customWateringDays}
+          nextScheduledWatering={data.nextScheduledWatering}
+          onChangeFrequency={setWateringFrequency}
+          onChangeCustomDays={setCustomWateringDays}
+          onChangeMoistureRange={setOptimalMoistureRange}
+        />
       </div>
       
       {/* Arduino Connection Card */}

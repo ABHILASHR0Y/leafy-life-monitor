@@ -1,8 +1,8 @@
-
 import { useState, useEffect, useCallback } from 'react';
 
 export type MotorStatus = 'idle' | 'active' | 'error';
 export type WateringMode = 'automatic' | 'manual';
+export type WateringFrequency = 'daily' | 'twice_weekly' | 'weekly' | 'biweekly' | 'custom';
 
 export interface PlantData {
   currentMoisture: number;
@@ -14,6 +14,9 @@ export interface PlantData {
   wateringMode: WateringMode;
   wateringDuration: number; // in seconds
   fertilizerDuration: number; // in seconds
+  wateringFrequency: WateringFrequency;
+  customWateringDays: number; // days between waterings if custom frequency
+  nextScheduledWatering: Date | null;
   historyData: Array<{
     timestamp: Date;
     moisture: number;
@@ -35,6 +38,9 @@ export function usePlantData() {
     wateringMode: 'manual', // Default to manual mode
     wateringDuration: 10, // Default 10 seconds
     fertilizerDuration: 10, // Default 10 seconds
+    wateringFrequency: 'twice_weekly', // Default to twice weekly
+    customWateringDays: 3, // Default to 3 days for custom frequency
+    nextScheduledWatering: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
     historyData: []
   });
 
@@ -195,6 +201,26 @@ export function usePlantData() {
     }
   }, [data.waterMotorStatus, data.fertilizerMotorStatus, data.wateringDuration, data.fertilizerDuration, useSimulation]);
 
+  // Check if it's time to water based on frequency and moisture level
+  useEffect(() => {
+    if (!useSimulation || data.wateringMode !== 'automatic') return;
+    
+    const now = new Date();
+    
+    // Check if it's time to water based on schedule AND if moisture is below threshold
+    if (data.nextScheduledWatering && 
+        now >= data.nextScheduledWatering && 
+        data.currentMoisture < data.optimalRange[0] && 
+        data.waterMotorStatus === 'idle') {
+      
+      // Activate water motor
+      setData(prev => ({
+        ...prev,
+        waterMotorStatus: 'active'
+      }));
+    }
+  }, [data.currentMoisture, data.nextScheduledWatering, data.optimalRange, data.waterMotorStatus, data.wateringMode, useSimulation]);
+
   // Function to manually activate water motor
   const activateWaterMotor = useCallback(() => {
     setData(prev => ({
@@ -235,6 +261,77 @@ export function usePlantData() {
     }));
   }, []);
 
+  // Function to update watering frequency and next scheduled time
+  const setWateringFrequency = useCallback((frequency: WateringFrequency) => {
+    setData(prev => {
+      // Calculate next watering date based on frequency
+      const now = new Date();
+      let nextDate: Date;
+      
+      switch (frequency) {
+        case 'daily':
+          nextDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Tomorrow
+          break;
+        case 'twice_weekly':
+          nextDate = new Date(now.getTime() + 3.5 * 24 * 60 * 60 * 1000); // 3.5 days
+          break;
+        case 'weekly':
+          nextDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+          break;
+        case 'biweekly':
+          nextDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days
+          break;
+        case 'custom':
+          nextDate = new Date(now.getTime() + prev.customWateringDays * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          nextDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // Default to 3 days
+      }
+      
+      return {
+        ...prev,
+        wateringFrequency: frequency,
+        nextScheduledWatering: nextDate
+      };
+    });
+  }, []);
+
+  // Function to update custom watering days (for custom frequency)
+  const setCustomWateringDays = useCallback((days: number) => {
+    setData(prev => {
+      // Only update next scheduled watering if frequency is custom
+      const now = new Date();
+      const nextDate = prev.wateringFrequency === 'custom' 
+        ? new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
+        : prev.nextScheduledWatering;
+        
+      return {
+        ...prev,
+        customWateringDays: days,
+        nextScheduledWatering: nextDate
+      };
+    });
+  }, []);
+
+  // Function to update optimal moisture range
+  const setOptimalMoistureRange = useCallback((range: [number, number]) => {
+    // Ensure min <= max and values are within 0-100
+    const validRange: [number, number] = [
+      Math.max(0, Math.min(range[0], 100)),
+      Math.max(0, Math.min(range[1], 100))
+    ];
+    
+    // Ensure min <= max
+    if (validRange[0] > validRange[1]) {
+      validRange[0] = validRange[1];
+    }
+    
+    setData(prev => ({
+      ...prev,
+      optimalRange: validRange
+    }));
+  }, []);
+
   // Check if moisture is critically low (for alerts)
   const isMoistureCritical = data.currentMoisture < data.optimalRange[0] * 0.8;
 
@@ -245,6 +342,9 @@ export function usePlantData() {
     toggleWateringMode,
     setWateringDuration,
     setFertilizerDuration,
+    setWateringFrequency,
+    setCustomWateringDays,
+    setOptimalMoistureRange,
     updateFromArduino,
     isMoistureCritical
   };
