@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export type MotorStatus = 'idle' | 'active' | 'error';
 export type WateringMode = 'automatic' | 'manual';
@@ -22,7 +22,8 @@ export interface PlantData {
   }>;
 }
 
-// This is a mock hook that simulates data that would come from an Arduino
+// This hook simulates data that would come from an Arduino
+// but can also be updated with real data from the Arduino
 export function usePlantData() {
   const [data, setData] = useState<PlantData>({
     currentMoisture: 65,
@@ -37,8 +38,75 @@ export function usePlantData() {
     historyData: []
   });
 
+  const [useSimulation, setUseSimulation] = useState(true);
+
+  // Function to update data from Arduino readings
+  const updateFromArduino = useCallback((arduinoData: any) => {
+    setUseSimulation(false); // Switch to real data mode
+    
+    setData(prev => {
+      // Create a copy to avoid mutation
+      const newData = { ...prev };
+      
+      // Update the moisture level if provided
+      if ('moisture' in arduinoData) {
+        newData.currentMoisture = arduinoData.moisture;
+      }
+      
+      // Update water motor status if provided
+      if ('water_motor' in arduinoData) {
+        newData.waterMotorStatus = arduinoData.water_motor ? 'active' : 'idle';
+        
+        // If motor just turned off, update last watered time
+        if (!arduinoData.water_motor && prev.waterMotorStatus === 'active') {
+          newData.lastWatered = new Date();
+        }
+      }
+      
+      // Update fertilizer motor status if provided
+      if ('fertilizer_motor' in arduinoData) {
+        newData.fertilizerMotorStatus = arduinoData.fertilizer_motor ? 'active' : 'idle';
+        
+        // If motor just turned off, update last fertilized time
+        if (!arduinoData.fertilizer_motor && prev.fertilizerMotorStatus === 'active') {
+          newData.lastFertilized = new Date();
+        }
+      }
+      
+      // Update watering mode if provided
+      if ('mode' in arduinoData) {
+        newData.wateringMode = arduinoData.mode as WateringMode;
+      }
+      
+      // Update durations if provided
+      if ('water_duration' in arduinoData) {
+        newData.wateringDuration = arduinoData.water_duration;
+      }
+      
+      if ('fertilizer_duration' in arduinoData) {
+        newData.fertilizerDuration = arduinoData.fertilizer_duration;
+      }
+      
+      // Add a data point to history
+      const now = new Date();
+      newData.historyData = [
+        ...prev.historyData,
+        {
+          timestamp: now,
+          moisture: newData.currentMoisture,
+          waterMotor: newData.waterMotorStatus === 'active',
+          fertilizerMotor: newData.fertilizerMotorStatus === 'active'
+        }
+      ].slice(-25); // Keep only the last 25 data points
+      
+      return newData;
+    });
+  }, []);
+
   // Generate mock historical data
   useEffect(() => {
+    if (!useSimulation) return; // Skip simulation if using real data
+    
     const now = new Date();
     const history = [];
     
@@ -65,10 +133,12 @@ export function usePlantData() {
     }
     
     setData(prev => ({ ...prev, historyData: history }));
-  }, []);
+  }, [useSimulation]);
 
   // Simulate real-time moisture fluctuations
   useEffect(() => {
+    if (!useSimulation) return; // Skip simulation if using real data
+    
     const interval = setInterval(() => {
       setData(prev => {
         // Simulate moisture decreasing over time, with some randomness
@@ -91,10 +161,12 @@ export function usePlantData() {
     }, 2000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [useSimulation]);
 
   // Simulate motor activations
   useEffect(() => {
+    if (!useSimulation) return; // Skip simulation if using real data
+    
     // If water motor is active, run for specified duration then turn off
     if (data.waterMotorStatus === 'active') {
       const timer = setTimeout(() => {
@@ -121,47 +193,47 @@ export function usePlantData() {
       
       return () => clearTimeout(timer);
     }
-  }, [data.waterMotorStatus, data.fertilizerMotorStatus, data.wateringDuration, data.fertilizerDuration]);
+  }, [data.waterMotorStatus, data.fertilizerMotorStatus, data.wateringDuration, data.fertilizerDuration, useSimulation]);
 
   // Function to manually activate water motor
-  const activateWaterMotor = () => {
+  const activateWaterMotor = useCallback(() => {
     setData(prev => ({
       ...prev,
       waterMotorStatus: 'active'
     }));
-  };
+  }, []);
 
   // Function to manually activate fertilizer motor
-  const activateFertilizerMotor = () => {
+  const activateFertilizerMotor = useCallback(() => {
     setData(prev => ({
       ...prev,
       fertilizerMotorStatus: 'active'
     }));
-  };
+  }, []);
 
   // Function to toggle watering mode
-  const toggleWateringMode = () => {
+  const toggleWateringMode = useCallback(() => {
     setData(prev => ({
       ...prev,
       wateringMode: prev.wateringMode === 'automatic' ? 'manual' : 'automatic'
     }));
-  };
+  }, []);
 
   // Function to update watering duration
-  const setWateringDuration = (duration: number) => {
+  const setWateringDuration = useCallback((duration: number) => {
     setData(prev => ({
       ...prev,
       wateringDuration: duration
     }));
-  };
+  }, []);
 
   // Function to update fertilizer duration
-  const setFertilizerDuration = (duration: number) => {
+  const setFertilizerDuration = useCallback((duration: number) => {
     setData(prev => ({
       ...prev,
       fertilizerDuration: duration
     }));
-  };
+  }, []);
 
   // Check if moisture is critically low (for alerts)
   const isMoistureCritical = data.currentMoisture < data.optimalRange[0] * 0.8;
@@ -173,6 +245,7 @@ export function usePlantData() {
     toggleWateringMode,
     setWateringDuration,
     setFertilizerDuration,
+    updateFromArduino,
     isMoistureCritical
   };
 }

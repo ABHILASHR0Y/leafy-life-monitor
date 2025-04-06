@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import MoistureGauge from './MoistureGauge';
 import ControlPanel from './ControlPanel';
 import HistoryChart from './HistoryChart';
 import MotorStatus from './MotorStatus';
 import NotificationSystem from './NotificationSystem';
+import ArduinoConnection from './ArduinoConnection';
 import { usePlantData } from '@/hooks/usePlantData';
 import { Leaf } from 'lucide-react';
 
@@ -16,8 +17,24 @@ const Dashboard: React.FC = () => {
     toggleWateringMode,
     setWateringDuration,
     setFertilizerDuration,
-    isMoistureCritical 
+    isMoistureCritical,
+    updateFromArduino 
   } = usePlantData();
+  
+  // Handle real data from Arduino
+  const handleArduinoData = useCallback((arduinoData: any) => {
+    if (arduinoData) {
+      updateFromArduino(arduinoData);
+    }
+  }, [updateFromArduino]);
+
+  // Forward commands to Arduino via hook
+  const handleSendCommand = useCallback(async (command: string): Promise<boolean> => {
+    console.log('Command forwarded to Arduino:', command);
+    // This function is called after the actual command is sent to Arduino
+    // We can use it to update UI or handle command-specific logic
+    return true;
+  }, []);
   
   return (
     <div className="container py-6">
@@ -62,6 +79,14 @@ const Dashboard: React.FC = () => {
         />
         
         <HistoryChart data={data.historyData} />
+      </div>
+      
+      {/* Arduino Connection Card */}
+      <div className="mt-6">
+        <ArduinoConnection 
+          onDataReceived={handleArduinoData}
+          onSendCommand={handleSendCommand}
+        />
       </div>
       
       {/* Invisible notification system */}
