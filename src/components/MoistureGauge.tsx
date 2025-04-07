@@ -1,16 +1,19 @@
 
 import React, { useMemo } from 'react';
-import { Droplet } from 'lucide-react';
+import { Droplet, WifiOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface MoistureGaugeProps {
   currentMoisture: number;
   optimalRange: [number, number];
+  isArduinoConnected: boolean;
 }
 
 const MoistureGauge: React.FC<MoistureGaugeProps> = ({ 
   currentMoisture, 
-  optimalRange 
+  optimalRange,
+  isArduinoConnected
 }) => {
   const { toast } = useToast();
   
@@ -35,17 +38,32 @@ const MoistureGauge: React.FC<MoistureGaugeProps> = ({
 
   // Show toast when moisture is critically low
   React.useEffect(() => {
-    if (currentMoisture < optimalRange[0] * 0.7) {
+    if (isArduinoConnected && currentMoisture < optimalRange[0] * 0.7) {
       toast({
         title: 'Low Moisture Alert!',
         description: 'Your plant is very dry and needs water soon.',
         variant: 'destructive',
       });
     }
-  }, [currentMoisture, optimalRange, toast]);
+  }, [currentMoisture, optimalRange, toast, isArduinoConnected]);
 
   // Calculate angle for gauge needle (from -90 to 90 degrees)
   const needleAngle = -90 + (180 * gaugePosition / 100);
+
+  // If Arduino is disconnected, show a disconnected state
+  if (!isArduinoConnected) {
+    return (
+      <Card className="h-full flex flex-col">
+        <CardContent className="h-full flex flex-col items-center justify-center p-6">
+          <WifiOff className="h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-xl font-semibold mb-2">Moisture Sensor Disconnected</h3>
+          <p className="text-sm text-muted-foreground text-center">
+            Connect your Arduino to view real-time soil moisture data.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="card-dashboard">

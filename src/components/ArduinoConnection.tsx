@@ -10,11 +10,13 @@ import { toast } from "@/hooks/use-toast";
 interface ArduinoConnectionProps {
   onDataReceived: (data: any) => void;
   onSendCommand: (command: string) => Promise<boolean>;
+  onConnectionChange?: (isConnected: boolean) => void;
 }
 
 const ArduinoConnection: React.FC<ArduinoConnectionProps> = ({ 
   onDataReceived,
-  onSendCommand
+  onSendCommand,
+  onConnectionChange
 }) => {
   const { 
     isConnected, 
@@ -28,6 +30,13 @@ const ArduinoConnection: React.FC<ArduinoConnectionProps> = ({
   
   const [lastCommandSuccess, setLastCommandSuccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Notify parent component about connection state changes
+  useEffect(() => {
+    if (onConnectionChange) {
+      onConnectionChange(isConnected);
+    }
+  }, [isConnected, onConnectionChange]);
 
   // Initialize real Arduino communication
   useEffect(() => {

@@ -1,5 +1,5 @@
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import MoistureGauge from './MoistureGauge';
 import ControlPanel from './ControlPanel';
 import HistoryChart from './HistoryChart';
@@ -13,6 +13,8 @@ import { Leaf } from 'lucide-react';
 import { PlantProfile } from '@/data/plants';
 
 const Dashboard: React.FC = () => {
+  const [isArduinoConnected, setIsArduinoConnected] = useState(false);
+  
   const { 
     data, 
     activateWaterMotor, 
@@ -25,15 +27,21 @@ const Dashboard: React.FC = () => {
     setOptimalMoistureRange,
     setSelectedPlant,
     isMoistureCritical,
-    updateFromArduino 
+    updateFromArduino,
+    setUseSimulation
   } = usePlantData();
+  
+  // Update plant data hook when Arduino connection changes
+  useEffect(() => {
+    setUseSimulation(false); // Disable simulation when Arduino status changes
+  }, [isArduinoConnected, setUseSimulation]);
   
   // Handle real data from Arduino
   const handleArduinoData = useCallback((arduinoData: any) => {
-    if (arduinoData) {
+    if (arduinoData && isArduinoConnected) {
       updateFromArduino(arduinoData);
     }
-  }, [updateFromArduino]);
+  }, [updateFromArduino, isArduinoConnected]);
 
   // Forward commands to Arduino via hook
   const handleSendCommand = useCallback(async (command: string): Promise<boolean> => {
@@ -41,6 +49,11 @@ const Dashboard: React.FC = () => {
     // This function is called after the actual command is sent to Arduino
     // We can use it to update UI or handle command-specific logic
     return true;
+  }, []);
+
+  // Handle Arduino connection status change
+  const handleArduinoConnectionChange = useCallback((connected: boolean) => {
+    setIsArduinoConnected(connected);
   }, []);
 
   // Handle plant profile selection
@@ -67,6 +80,7 @@ const Dashboard: React.FC = () => {
         fertilizerMotorStatus={data.fertilizerMotorStatus}
         lastWatered={data.lastWatered}
         lastFertilized={data.lastFertilized}
+        isArduinoConnected={isArduinoConnected}
       />
       
       {/* Plant Profile Selector - Moved to the top for better visibility */}
@@ -80,7 +94,8 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
         <MoistureGauge 
           currentMoisture={data.currentMoisture} 
-          optimalRange={data.optimalRange} 
+          optimalRange={data.optimalRange}
+          isArduinoConnected={isArduinoConnected}
         />
         
         <ControlPanel 
@@ -96,9 +111,13 @@ const Dashboard: React.FC = () => {
           onChangeFertilizerDuration={setFertilizerDuration}
           lastWatered={data.lastWatered}
           lastFertilized={data.lastFertilized}
+          isArduinoConnected={isArduinoConnected}
         />
         
-        <HistoryChart data={data.historyData} />
+        <HistoryChart 
+          data={data.historyData} 
+          isArduinoConnected={isArduinoConnected}
+        />
       </div>
       
       {/* Plant Config */}
@@ -120,12 +139,13 @@ const Dashboard: React.FC = () => {
         <ArduinoConnection 
           onDataReceived={handleArduinoData}
           onSendCommand={handleSendCommand}
+          onConnectionChange={handleArduinoConnectionChange}
         />
       </div>
       
       {/* Invisible notification system */}
       <NotificationSystem 
-        isMoistureCritical={isMoistureCritical} 
+        isMoistureCritical={isMoistureCritical && isArduinoConnected} 
         moistureLevel={data.currentMoisture}
       />
     </div>

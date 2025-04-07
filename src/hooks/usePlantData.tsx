@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { PlantProfile } from '@/data/plants';
 
@@ -47,12 +48,10 @@ export function usePlantData() {
     historyData: []
   });
 
-  const [useSimulation, setUseSimulation] = useState(true);
+  const [useSimulation, setUseSimulation] = useState(false); // Disabled simulation by default
 
   // Function to update data from Arduino readings
   const updateFromArduino = useCallback((arduinoData: any) => {
-    setUseSimulation(false); // Switch to real data mode
-    
     setData(prev => {
       // Create a copy to avoid mutation
       const newData = { ...prev };
@@ -388,6 +387,7 @@ export function usePlantData() {
     setOptimalMoistureRange,
     setSelectedPlant,
     updateFromArduino,
+    setUseSimulation,
     isMoistureCritical
   };
 }
