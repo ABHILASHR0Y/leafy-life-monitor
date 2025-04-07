@@ -7,8 +7,10 @@ import MotorStatus from './MotorStatus';
 import NotificationSystem from './NotificationSystem';
 import ArduinoConnection from './ArduinoConnection';
 import PlantConfigCard from './PlantConfigCard';
+import PlantProfileSelector from './PlantProfileSelector';
 import { usePlantData } from '@/hooks/usePlantData';
 import { Leaf } from 'lucide-react';
+import { PlantProfile } from '@/data/plants';
 
 const Dashboard: React.FC = () => {
   const { 
@@ -21,6 +23,7 @@ const Dashboard: React.FC = () => {
     setWateringFrequency,
     setCustomWateringDays,
     setOptimalMoistureRange,
+    setSelectedPlant,
     isMoistureCritical,
     updateFromArduino 
   } = usePlantData();
@@ -39,6 +42,11 @@ const Dashboard: React.FC = () => {
     // We can use it to update UI or handle command-specific logic
     return true;
   }, []);
+
+  // Handle plant profile selection
+  const handleSelectPlant = useCallback((plant: PlantProfile) => {
+    setSelectedPlant(plant);
+  }, [setSelectedPlant]);
   
   return (
     <div className="container py-6">
@@ -85,8 +93,13 @@ const Dashboard: React.FC = () => {
         <HistoryChart data={data.historyData} />
       </div>
       
-      {/* Plant Config Card */}
-      <div className="mt-6">
+      {/* Plant Profile and Config */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <PlantProfileSelector
+          selectedPlantId={data.selectedPlantId}
+          onSelectPlant={handleSelectPlant}
+        />
+        
         <PlantConfigCard
           optimalRange={data.optimalRange}
           wateringFrequency={data.wateringFrequency}
@@ -95,6 +108,7 @@ const Dashboard: React.FC = () => {
           onChangeFrequency={setWateringFrequency}
           onChangeCustomDays={setCustomWateringDays}
           onChangeMoistureRange={setOptimalMoistureRange}
+          selectedPlantId={data.selectedPlantId}
         />
       </div>
       

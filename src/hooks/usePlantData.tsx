@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { PlantProfile } from '@/data/plants';
 
 export type MotorStatus = 'idle' | 'active' | 'error';
 export type WateringMode = 'automatic' | 'manual';
@@ -17,6 +18,7 @@ export interface PlantData {
   wateringFrequency: WateringFrequency;
   customWateringDays: number; // days between waterings if custom frequency
   nextScheduledWatering: Date | null;
+  selectedPlantId: string | null;
   historyData: Array<{
     timestamp: Date;
     moisture: number;
@@ -41,6 +43,7 @@ export function usePlantData() {
     wateringFrequency: 'twice_weekly', // Default to twice weekly
     customWateringDays: 3, // Default to 3 days for custom frequency
     nextScheduledWatering: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+    selectedPlantId: null,
     historyData: []
   });
 
@@ -332,6 +335,44 @@ export function usePlantData() {
     }));
   }, []);
 
+  // Function to set the selected plant profile
+  const setSelectedPlant = useCallback((plant: PlantProfile) => {
+    setData(prev => {
+      // Calculate next watering date based on plant's frequency
+      const now = new Date();
+      let nextDate: Date;
+      
+      switch (plant.wateringFrequency) {
+        case 'daily':
+          nextDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Tomorrow
+          break;
+        case 'twice_weekly':
+          nextDate = new Date(now.getTime() + 3.5 * 24 * 60 * 60 * 1000); // 3.5 days
+          break;
+        case 'weekly':
+          nextDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+          break;
+        case 'biweekly':
+          nextDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days
+          break;
+        case 'custom':
+          nextDate = new Date(now.getTime() + (plant.customWateringDays || prev.customWateringDays) * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          nextDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // Default to 3 days
+      }
+      
+      return {
+        ...prev,
+        selectedPlantId: plant.id,
+        optimalRange: plant.idealMoistureRange,
+        wateringFrequency: plant.wateringFrequency,
+        customWateringDays: plant.customWateringDays || prev.customWateringDays,
+        nextScheduledWatering: nextDate
+      };
+    });
+  }, []);
+
   // Check if moisture is critically low (for alerts)
   const isMoistureCritical = data.currentMoisture < data.optimalRange[0] * 0.8;
 
@@ -345,6 +386,7 @@ export function usePlantData() {
     setWateringFrequency,
     setCustomWateringDays,
     setOptimalMoistureRange,
+    setSelectedPlant,
     updateFromArduino,
     isMoistureCritical
   };
