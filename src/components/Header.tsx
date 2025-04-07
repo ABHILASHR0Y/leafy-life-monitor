@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Flower, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Flower } from 'lucide-react';
 import { useSerialConnection } from '@/hooks/useSerialConnection';
+import ArduinoSettingsMenu from './ArduinoSettingsMenu';
 
 const Header: React.FC = () => {
   const { isConnected, connectionError } = useSerialConnection();
@@ -23,9 +23,7 @@ const Header: React.FC = () => {
             </span>
           </div>
           
-          <Button variant="outline" size="icon">
-            <Settings className="h-5 w-5" />
-          </Button>
+          <ArduinoSettingsMenu />
         </div>
       </div>
     </header>
