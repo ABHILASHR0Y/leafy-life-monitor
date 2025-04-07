@@ -1,8 +1,7 @@
-
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Flower, Carrot, Sprout, Leaf, GrainIcon, Apple, ChevronDown, ChevronUp } from 'lucide-react';
+import { Flower, Carrot, Sprout, Leaf, Grain, Apple, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PlantProfile, getAllPlants, getPlantsByType, getPlantTypes } from '@/data/plants';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +23,6 @@ const PlantProfileSelector: React.FC<PlantProfileSelectorProps> = ({
   const plantTypes = getPlantTypes();
   const selectedPlant = allPlants.find(plant => plant.id === selectedPlantId) || null;
 
-  // Group plants by type
   const plantsByType = useMemo(() => {
     const result: Record<string, PlantProfile[]> = {};
     plantTypes.forEach(type => {
@@ -44,7 +42,7 @@ const PlantProfileSelector: React.FC<PlantProfileSelectorProps> = ({
       case 'fruit':
         return <Apple className="h-4 w-4 text-red-500" />;
       case 'grain':
-        return <GrainIcon className="h-4 w-4 text-yellow-500" />;
+        return <Grain className="h-4 w-4 text-yellow-500" />;
       case 'succulent':
       case 'houseplant':
       default:
