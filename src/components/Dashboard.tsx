@@ -69,6 +69,14 @@ const Dashboard: React.FC = () => {
         lastFertilized={data.lastFertilized}
       />
       
+      {/* Plant Profile Selector - Moved to the top for better visibility */}
+      <div className="mt-6">
+        <PlantProfileSelector
+          selectedPlantId={data.selectedPlantId}
+          onSelectPlant={handleSelectPlant}
+        />
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
         <MoistureGauge 
           currentMoisture={data.currentMoisture} 
@@ -93,13 +101,8 @@ const Dashboard: React.FC = () => {
         <HistoryChart data={data.historyData} />
       </div>
       
-      {/* Plant Profile and Config */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <PlantProfileSelector
-          selectedPlantId={data.selectedPlantId}
-          onSelectPlant={handleSelectPlant}
-        />
-        
+      {/* Plant Config */}
+      <div className="mt-6">
         <PlantConfigCard
           optimalRange={data.optimalRange}
           wateringFrequency={data.wateringFrequency}

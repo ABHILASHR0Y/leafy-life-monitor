@@ -1,13 +1,14 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Flower, Carrot, Sprout, Leaf } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Flower, Carrot, Sprout, Leaf, GrainIcon, Apple, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { PlantProfile, getAllPlants, getPlantsByType } from '@/data/plants';
+import { PlantProfile, getAllPlants, getPlantsByType, getPlantTypes } from '@/data/plants';
 import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 interface PlantProfileSelectorProps {
   selectedPlantId: string | null;
@@ -20,7 +21,17 @@ const PlantProfileSelector: React.FC<PlantProfileSelectorProps> = ({
 }) => {
   const { toast } = useToast();
   const allPlants = getAllPlants();
+  const plantTypes = getPlantTypes();
   const selectedPlant = allPlants.find(plant => plant.id === selectedPlantId) || null;
+
+  // Group plants by type
+  const plantsByType = useMemo(() => {
+    const result: Record<string, PlantProfile[]> = {};
+    plantTypes.forEach(type => {
+      result[type] = getPlantsByType(type);
+    });
+    return result;
+  }, [plantTypes]);
 
   const getPlantIcon = (type: PlantProfile['type']) => {
     switch (type) {
@@ -30,6 +41,10 @@ const PlantProfileSelector: React.FC<PlantProfileSelectorProps> = ({
         return <Flower className="h-4 w-4 text-pink-500" />;
       case 'herb':
         return <Sprout className="h-4 w-4 text-green-500" />;
+      case 'fruit':
+        return <Apple className="h-4 w-4 text-red-500" />;
+      case 'grain':
+        return <GrainIcon className="h-4 w-4 text-yellow-500" />;
       case 'succulent':
       case 'houseplant':
       default:
@@ -37,15 +52,12 @@ const PlantProfileSelector: React.FC<PlantProfileSelectorProps> = ({
     }
   };
 
-  const handleSelectPlant = (plantId: string) => {
-    const plant = allPlants.find(p => p.id === plantId);
-    if (plant) {
-      onSelectPlant(plant);
-      toast({
-        title: "Plant Profile Selected",
-        description: `${plant.name} settings have been applied.`
-      });
-    }
+  const handleSelectPlant = (plant: PlantProfile) => {
+    onSelectPlant(plant);
+    toast({
+      title: "Plant Profile Selected",
+      description: `${plant.name} settings have been applied.`
+    });
   };
 
   const getTypeLabel = (type: PlantProfile['type']) => {
@@ -55,18 +67,11 @@ const PlantProfileSelector: React.FC<PlantProfileSelectorProps> = ({
       case 'herb': return 'Herbs';
       case 'succulent': return 'Succulents';
       case 'houseplant': return 'House Plants';
+      case 'fruit': return 'Fruits';
+      case 'grain': return 'Grains';
       default: return type;
     }
   };
-
-  // Group plants by type for the dropdown
-  const plantsByType: Record<string, PlantProfile[]> = {};
-  allPlants.forEach(plant => {
-    if (!plantsByType[plant.type]) {
-      plantsByType[plant.type] = [];
-    }
-    plantsByType[plant.type].push(plant);
-  });
 
   return (
     <Card>
@@ -78,56 +83,15 @@ const PlantProfileSelector: React.FC<PlantProfileSelectorProps> = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
-                <span className="flex items-center gap-2">
-                  {selectedPlant ? (
-                    <>
-                      {getPlantIcon(selectedPlant.type)}
-                      {selectedPlant.name}
-                    </>
-                  ) : (
-                    <>
-                      <Leaf className="h-4 w-4" />
-                      Select a plant...
-                    </>
-                  )}
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56">
-              <DropdownMenuLabel>Select Plant Type</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              
-              {Object.keys(plantsByType).map(type => (
-                <React.Fragment key={type}>
-                  <DropdownMenuLabel className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
-                    {getPlantIcon(type as PlantProfile['type'])}
-                    {getTypeLabel(type as PlantProfile['type'])}
-                  </DropdownMenuLabel>
-                  
-                  {plantsByType[type].map(plant => (
-                    <DropdownMenuItem 
-                      key={plant.id}
-                      onClick={() => handleSelectPlant(plant.id)}
-                      className="pl-6"
-                    >
-                      {plant.name}
-                    </DropdownMenuItem>
-                  ))}
-                  
-                  <DropdownMenuSeparator />
-                </React.Fragment>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
           {selectedPlant && (
-            <div className="pt-2 space-y-2">
+            <div className="p-3 bg-secondary/20 rounded-md space-y-2">
+              <div className="flex items-center gap-2">
+                {getPlantIcon(selectedPlant.type)}
+                <span className="font-medium">{selectedPlant.name}</span>
+              </div>
+              
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="flex items-center gap-1">
-                  {getPlantIcon(selectedPlant.type)}
                   {getTypeLabel(selectedPlant.type)}
                 </Badge>
                 
@@ -144,6 +108,61 @@ const PlantProfileSelector: React.FC<PlantProfileSelectorProps> = ({
               </p>
             </div>
           )}
+
+          <Tabs defaultValue={selectedPlant?.type || plantTypes[0]}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium">Select Plant Type</h3>
+              <div className="flex gap-1 items-center text-xs text-muted-foreground">
+                <ChevronDown className="h-3 w-3" />
+                <span>Scroll for more</span>
+              </div>
+            </div>
+            
+            <ScrollArea className="h-12 pb-2">
+              <TabsList className="w-full justify-start">
+                {plantTypes.map(type => (
+                  <TabsTrigger key={type} value={type} className="flex items-center gap-1">
+                    {getPlantIcon(type)}
+                    {getTypeLabel(type)}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </ScrollArea>
+            
+            {plantTypes.map(type => (
+              <TabsContent key={type} value={type} className="mt-2">
+                <div className="relative">
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                    {getPlantIcon(type)} {getTypeLabel(type)}
+                  </h4>
+                  
+                  <Carousel className="w-full">
+                    <CarouselContent>
+                      {plantsByType[type].map(plant => (
+                        <CarouselItem key={plant.id} className="basis-1/2 md:basis-1/3 lg:basis-1/4">
+                          <div 
+                            className={`p-3 rounded-md cursor-pointer border transition-all ${
+                              selectedPlantId === plant.id 
+                                ? 'border-primary bg-primary/10' 
+                                : 'border-border hover:border-primary/40'
+                            }`}
+                            onClick={() => handleSelectPlant(plant)}
+                          >
+                            <div className="text-sm font-medium truncate">{plant.name}</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {plant.idealMoistureRange[0]}-{plant.idealMoistureRange[1]}% moisture
+                            </div>
+                          </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="left-0" />
+                    <CarouselNext className="right-0" />
+                  </Carousel>
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
         </div>
       </CardContent>
     </Card>
