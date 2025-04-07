@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Droplet, Beaker, Clock, Calendar } from 'lucide-react';
 import { MotorStatus as MotorStatusType } from '@/hooks/usePlantData';
@@ -8,13 +9,15 @@ interface MotorStatusProps {
   fertilizerMotorStatus: MotorStatusType;
   lastWatered: Date | null;
   lastFertilized: Date | null;
+  isArduinoConnected: boolean;
 }
 
 const MotorStatus: React.FC<MotorStatusProps> = ({
   waterMotorStatus,
   fertilizerMotorStatus,
   lastWatered,
-  lastFertilized
+  lastFertilized,
+  isArduinoConnected
 }) => {
   const getLastWateredText = () => {
     if (!lastWatered) return 'Never';
@@ -52,24 +55,28 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
   };
   
   const getWaterStatus = () => {
+    if (!isArduinoConnected) return 'Disconnected';
     if (waterMotorStatus === 'active') return 'Active';
     if (waterMotorStatus === 'error') return 'Error';
     return 'Idle';
   };
   
   const getWaterStatusType = (): 'default' | 'success' | 'warning' | 'danger' => {
+    if (!isArduinoConnected) return 'warning';
     if (waterMotorStatus === 'active') return 'success';
     if (waterMotorStatus === 'error') return 'danger';
     return 'default';
   };
   
   const getFertilizerStatus = () => {
+    if (!isArduinoConnected) return 'Disconnected';
     if (fertilizerMotorStatus === 'active') return 'Active';
     if (fertilizerMotorStatus === 'error') return 'Error';
     return 'Idle';
   };
   
   const getFertilizerStatusType = (): 'default' | 'success' | 'warning' | 'danger' => {
+    if (!isArduinoConnected) return 'warning';
     if (fertilizerMotorStatus === 'active') return 'success';
     if (fertilizerMotorStatus === 'error') return 'danger';
     return 'default';

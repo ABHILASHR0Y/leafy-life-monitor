@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Droplet, Beaker, AlertCircle, Clock, Settings, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ interface ControlPanelProps {
   onChangeFertilizerDuration: (duration: number) => void;
   lastWatered: Date | null;
   lastFertilized: Date | null;
+  isArduinoConnected: boolean;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -36,7 +36,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   onChangeWaterDuration,
   onChangeFertilizerDuration,
   lastWatered,
-  lastFertilized
+  lastFertilized,
+  isArduinoConnected
 }) => {
   const { toast } = useToast();
   const [isWaterConfirmOpen, setIsWaterConfirmOpen] = useState(false);
@@ -56,6 +57,27 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
     return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
   };
+
+  if (!isArduinoConnected) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span>Motor Controls</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+          <div className="text-muted-foreground mb-4">
+            <Settings className="h-12 w-12 mx-auto mb-2" />
+            <h3 className="text-lg font-semibold">Motor Controls Unavailable</h3>
+          </div>
+          <p className="text-sm">
+            Connect your Arduino to control water and fertilizer motors.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const handleWaterActivate = () => {
     if (waterMotorStatus !== 'idle') {

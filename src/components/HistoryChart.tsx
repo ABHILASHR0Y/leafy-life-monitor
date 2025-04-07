@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart4, WifiOff } from 'lucide-react';
 
 interface DataPoint {
   timestamp: Date;
@@ -13,9 +14,28 @@ interface DataPoint {
 
 interface HistoryChartProps {
   data: DataPoint[];
+  isArduinoConnected: boolean;
 }
 
-const HistoryChart: React.FC<HistoryChartProps> = ({ data }) => {
+const HistoryChart: React.FC<HistoryChartProps> = ({ data, isArduinoConnected }) => {
+  // If not connected to Arduino, show disconnected state
+  if (!isArduinoConnected) {
+    return (
+      <Card className="col-span-2">
+        <CardHeader>
+          <CardTitle>Moisture History</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+          <WifiOff className="h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-xl font-semibold mb-2">History Data Unavailable</h3>
+          <p className="text-sm text-muted-foreground">
+            Connect your Arduino to view moisture history data.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Format data for the chart
   const chartData = useMemo(() => {
     return data.map(point => ({
