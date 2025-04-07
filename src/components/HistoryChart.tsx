@@ -18,24 +18,6 @@ interface HistoryChartProps {
 }
 
 const HistoryChart: React.FC<HistoryChartProps> = ({ data, isArduinoConnected }) => {
-  // If not connected to Arduino, show disconnected state
-  if (!isArduinoConnected) {
-    return (
-      <Card className="col-span-2">
-        <CardHeader>
-          <CardTitle>Moisture History</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center p-6 text-center">
-          <WifiOff className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">History Data Unavailable</h3>
-          <p className="text-sm text-muted-foreground">
-            Connect your Arduino to view moisture history data.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   // Format data for the chart
   const chartData = useMemo(() => {
     return data.map(point => ({
@@ -79,10 +61,17 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ data, isArduinoConnected })
     return null;
   };
 
+  // Show chart with real or simulated data
   return (
     <Card className="col-span-2">
       <CardHeader>
         <CardTitle>Moisture History</CardTitle>
+        {!isArduinoConnected && (
+          <p className="text-sm text-muted-foreground">
+            <WifiOff className="h-4 w-4 inline-block mr-2" />
+            Using simulated data - Connect Arduino for real-time data
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="today">

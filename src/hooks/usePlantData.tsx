@@ -48,7 +48,7 @@ export function usePlantData() {
     historyData: []
   });
 
-  const [useSimulation, setUseSimulation] = useState(false); // Disabled simulation by default
+  const [useSimulation, setUseSimulation] = useState(true); // Enable simulation by default
 
   // Function to update data from Arduino readings
   const updateFromArduino = useCallback((arduinoData: any) => {
@@ -113,8 +113,8 @@ export function usePlantData() {
 
   // Generate mock historical data
   useEffect(() => {
-    if (!useSimulation) return; // Skip simulation if using real data
-    
+    // Generate simulation data even if we're using real data
+    // so we always have something to show
     const now = new Date();
     const history = [];
     
@@ -140,7 +140,13 @@ export function usePlantData() {
       });
     }
     
-    setData(prev => ({ ...prev, historyData: history }));
+    // Only update if historyData is empty or useSimulation is true
+    setData(prev => {
+      if (prev.historyData.length === 0 || useSimulation) {
+        return { ...prev, historyData: history };
+      }
+      return prev;
+    });
   }, [useSimulation]);
 
   // Simulate real-time moisture fluctuations

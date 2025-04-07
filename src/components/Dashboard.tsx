@@ -33,7 +33,9 @@ const Dashboard: React.FC = () => {
   
   // Update plant data hook when Arduino connection changes
   useEffect(() => {
-    setUseSimulation(false); // Disable simulation when Arduino status changes
+    // Toggle simulation on/off based on Arduino connection
+    // If not connected, we use simulation data
+    setUseSimulation(!isArduinoConnected);
   }, [isArduinoConnected, setUseSimulation]);
   
   // Handle real data from Arduino
