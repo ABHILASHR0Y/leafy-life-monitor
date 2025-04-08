@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Droplet, WifiOff } from 'lucide-react';
+import { Droplet, WifiOff, CircleDot } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -67,10 +67,16 @@ const MoistureGauge: React.FC<MoistureGaugeProps> = ({
 
   return (
     <div className="card-dashboard">
-      <h3 className="text-xl font-semibold mb-3 flex items-center justify-center gap-2">
-        <Droplet className={`h-5 w-5 ${getMoistureColor}`} />
-        Soil Moisture
-      </h3>
+      <div className="flex items-center justify-center gap-2 mb-1">
+        <h3 className="text-xl font-semibold flex items-center gap-2">
+          <Droplet className={`h-5 w-5 ${getMoistureColor}`} />
+          Soil Moisture
+        </h3>
+        <CircleDot className="h-4 w-4 text-green-500" />
+      </div>
+      <div className="text-center text-sm text-green-500 font-medium mb-3">
+        Sensor Available
+      </div>
       
       <div className="gauge-container">
         {/* Gauge background */}
