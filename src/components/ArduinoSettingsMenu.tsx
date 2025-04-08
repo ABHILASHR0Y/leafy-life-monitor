@@ -8,7 +8,7 @@ import {
   MenubarSeparator,
   MenubarTrigger
 } from '@/components/ui/menubar';
-import { Settings2, RefreshCcw, Power, WifiOff, Database } from 'lucide-react';
+import { Settings2, RefreshCcw, Power, WifiOff, Database, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useArduinoSerial } from '@/hooks/useArduinoSerial';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -16,7 +16,7 @@ import { usePlantData } from '@/hooks/usePlantData';
 
 const ArduinoSettingsMenu: React.FC = () => {
   const { isConnected, connect, disconnect, serialAvailable } = useArduinoSerial();
-  const { setUseSimulation } = usePlantData();
+  const { useSimulation, setUseSimulation } = usePlantData();
   const { toast } = useToast();
   
   const handleConnect = async () => {
@@ -52,13 +52,13 @@ const ArduinoSettingsMenu: React.FC = () => {
   };
   
   const handleToggleSimulation = () => {
-    // Enable simulation mode regardless of Arduino connection
+    // Toggle simulation mode
     setUseSimulation(prevSimulation => {
       const newSimulationState = !prevSimulation;
       
       toast({
         title: 'Simulation Mode',
-        description: `Simulation mode ${newSimulationState ? 'enabled' : 'disabled'}.`,
+        description: `Simulation mode ${newSimulationState ? 'ON' : 'OFF'}.`,
       });
       
       return newSimulationState;
@@ -90,8 +90,17 @@ const ArduinoSettingsMenu: React.FC = () => {
           )}
           
           <MenubarItem onClick={handleToggleSimulation} className="cursor-pointer">
-            <Database className="mr-2 h-4 w-4" />
-            Toggle Simulation
+            {useSimulation ? (
+              <>
+                <ToggleRight className="mr-2 h-4 w-4 text-green-500" />
+                Simulation: ON
+              </>
+            ) : (
+              <>
+                <ToggleLeft className="mr-2 h-4 w-4 text-muted-foreground" />
+                Simulation: OFF
+              </>
+            )}
           </MenubarItem>
           
           <MenubarItem disabled={!isConnected} className="cursor-pointer">

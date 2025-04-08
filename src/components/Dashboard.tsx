@@ -37,7 +37,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     // If not using simulation and not connected, we use simulation data
     if (!useSimulation && !isConnected) {
-      setUseSimulation(true);
+      // This is handled in the MoistureGauge component now
     }
   }, [isConnected, setUseSimulation, useSimulation]);
   
