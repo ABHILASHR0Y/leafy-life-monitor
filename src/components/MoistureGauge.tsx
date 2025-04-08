@@ -67,15 +67,15 @@ const MoistureGauge: React.FC<MoistureGaugeProps> = ({
 
   return (
     <div className="card-dashboard">
-      <div className="flex items-center justify-center gap-2 mb-1">
+      <div className="flex items-center justify-between mb-1">
         <h3 className="text-xl font-semibold flex items-center gap-2">
           <Droplet className={`h-5 w-5 ${getMoistureColor}`} />
           Soil Moisture
         </h3>
-        <CircleDot className="h-4 w-4 text-green-500" />
-      </div>
-      <div className="text-center text-sm text-green-500 font-medium mb-3">
-        Sensor Available
+        <div className="flex items-center gap-1">
+          <CircleDot className="h-4 w-4 text-green-500" />
+          <span className="text-sm text-green-500 font-medium">Sensor Available</span>
+        </div>
       </div>
       
       <div className="gauge-container">

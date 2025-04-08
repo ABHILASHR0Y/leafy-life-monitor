@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Droplet, Beaker, Clock, Calendar } from 'lucide-react';
+import { Droplet, Beaker, Clock, Calendar, WifiOff } from 'lucide-react';
 import { MotorStatus as MotorStatusType } from '@/hooks/usePlantData';
 import StatusCard from './StatusCard';
 
@@ -54,41 +54,49 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
     }
   };
   
-  const getWaterStatus = () => {
-    if (!isArduinoConnected) return 'Disconnected';
-    if (waterMotorStatus === 'active') return 'Active';
-    if (waterMotorStatus === 'error') return 'Error';
-    return 'Idle';
-  };
-  
-  const getWaterStatusType = (): 'default' | 'success' | 'warning' | 'danger' => {
-    if (!isArduinoConnected) return 'warning';
-    if (waterMotorStatus === 'active') return 'success';
-    if (waterMotorStatus === 'error') return 'danger';
-    return 'default';
-  };
-  
-  const getFertilizerStatus = () => {
-    if (!isArduinoConnected) return 'Disconnected';
-    if (fertilizerMotorStatus === 'active') return 'Active';
-    if (fertilizerMotorStatus === 'error') return 'Error';
-    return 'Idle';
-  };
-  
-  const getFertilizerStatusType = (): 'default' | 'success' | 'warning' | 'danger' => {
-    if (!isArduinoConnected) return 'warning';
-    if (fertilizerMotorStatus === 'active') return 'success';
-    if (fertilizerMotorStatus === 'error') return 'danger';
-    return 'default';
-  };
+  if (!isArduinoConnected) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatusCard 
+          title="Water Motor"
+          value="Disconnected"
+          icon={WifiOff}
+          status="warning"
+          iconColor="text-plant-water"
+        />
+        
+        <StatusCard 
+          title="Last Watered"
+          value={getLastWateredText()}
+          icon={Clock}
+          iconColor="text-blue-500"
+        />
+        
+        <StatusCard 
+          title="Fertilizer Motor"
+          value="Disconnected"
+          icon={WifiOff}
+          status="warning"
+          iconColor="text-plant-fertilizer"
+        />
+        
+        <StatusCard 
+          title="Last Fertilized"
+          value={getLastFertilizedText()}
+          icon={Calendar}
+          iconColor="text-purple-500"
+        />
+      </div>
+    );
+  }
   
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       <StatusCard 
         title="Water Motor"
-        value={getWaterStatus()}
+        value={waterMotorStatus === 'active' ? 'Active' : waterMotorStatus === 'error' ? 'Error' : 'Idle'}
         icon={Droplet}
-        status={getWaterStatusType()}
+        status={waterMotorStatus === 'active' ? 'success' : waterMotorStatus === 'error' ? 'danger' : 'default'}
         iconColor="text-plant-water"
       />
       
@@ -101,9 +109,9 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
       
       <StatusCard 
         title="Fertilizer Motor"
-        value={getFertilizerStatus()}
+        value={fertilizerMotorStatus === 'active' ? 'Active' : fertilizerMotorStatus === 'error' ? 'Error' : 'Idle'}
         icon={Beaker}
-        status={getFertilizerStatusType()}
+        status={fertilizerMotorStatus === 'active' ? 'success' : fertilizerMotorStatus === 'error' ? 'danger' : 'default'}
         iconColor="text-plant-fertilizer"
       />
       
