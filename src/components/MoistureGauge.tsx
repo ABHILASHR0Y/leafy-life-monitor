@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Droplet, WifiOff, CircleDot } from 'lucide-react';
+import { Droplet, WifiOff, CircleDot, CircleX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 
