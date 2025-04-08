@@ -12,9 +12,11 @@ import { Settings2, RefreshCcw, Power, WifiOff, Database } from 'lucide-react';
 import { useArduinoSerial } from '@/hooks/useArduinoSerial';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { usePlantData } from '@/hooks/usePlantData';
 
 const ArduinoSettingsMenu: React.FC = () => {
   const { isConnected, connect, disconnect, serialAvailable } = useArduinoSerial();
+  const { setUseSimulation } = usePlantData();
   const { toast } = useToast();
   
   const handleConnect = async () => {
@@ -29,6 +31,9 @@ const ArduinoSettingsMenu: React.FC = () => {
     
     const success = await connect();
     if (success) {
+      // When connected to real Arduino, turn off simulation mode
+      setUseSimulation(false);
+      
       toast({
         title: 'Connected',
         description: 'Successfully connected to Arduino.',
@@ -47,9 +52,16 @@ const ArduinoSettingsMenu: React.FC = () => {
   };
   
   const handleToggleSimulation = () => {
-    toast({
-      title: 'Simulation Mode',
-      description: 'Toggled simulation mode.',
+    // Enable simulation mode regardless of Arduino connection
+    setUseSimulation(prevSimulation => {
+      const newSimulationState = !prevSimulation;
+      
+      toast({
+        title: 'Simulation Mode',
+        description: `Simulation mode ${newSimulationState ? 'enabled' : 'disabled'}.`,
+      });
+      
+      return newSimulationState;
     });
   };
   

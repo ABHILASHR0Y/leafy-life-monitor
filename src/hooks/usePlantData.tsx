@@ -163,7 +163,7 @@ export function usePlantData() {
         
         // Auto-activate water motor if in automatic mode and moisture falls below threshold
         const shouldActivateWater = prev.wateringMode === 'automatic' && 
-                                   newMoisture <= 0 && 
+                                   newMoisture <= prev.optimalRange[0] * 0.7 && 
                                    prev.waterMotorStatus === 'idle';
         
         return {
@@ -394,6 +394,7 @@ export function usePlantData() {
     setSelectedPlant,
     updateFromArduino,
     setUseSimulation,
+    useSimulation, // Expose the simulation state
     isMoistureCritical
   };
 }

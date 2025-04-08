@@ -9,11 +9,12 @@ import ArduinoConnection from './ArduinoConnection';
 import PlantConfigCard from './PlantConfigCard';
 import PlantProfileSelector from './PlantProfileSelector';
 import { usePlantData } from '@/hooks/usePlantData';
+import { useArduinoSerial } from '@/hooks/useArduinoSerial';
 import { Leaf } from 'lucide-react';
 import { PlantProfile } from '@/data/plants';
 
 const Dashboard: React.FC = () => {
-  const [isArduinoConnected, setIsArduinoConnected] = useState(false);
+  const { isConnected } = useArduinoSerial();
   
   const { 
     data, 
@@ -28,22 +29,24 @@ const Dashboard: React.FC = () => {
     setSelectedPlant,
     isMoistureCritical,
     updateFromArduino,
-    setUseSimulation
+    setUseSimulation,
+    useSimulation
   } = usePlantData();
   
   // Update plant data hook when Arduino connection changes
   useEffect(() => {
-    // Toggle simulation on/off based on Arduino connection
-    // If not connected, we use simulation data
-    setUseSimulation(!isArduinoConnected);
-  }, [isArduinoConnected, setUseSimulation]);
+    // If not using simulation and not connected, we use simulation data
+    if (!useSimulation && !isConnected) {
+      setUseSimulation(true);
+    }
+  }, [isConnected, setUseSimulation, useSimulation]);
   
   // Handle real data from Arduino
   const handleArduinoData = useCallback((arduinoData: any) => {
-    if (arduinoData && isArduinoConnected) {
+    if (arduinoData && isConnected) {
       updateFromArduino(arduinoData);
     }
-  }, [updateFromArduino, isArduinoConnected]);
+  }, [updateFromArduino, isConnected]);
 
   // Forward commands to Arduino via hook
   const handleSendCommand = useCallback(async (command: string): Promise<boolean> => {
@@ -55,13 +58,17 @@ const Dashboard: React.FC = () => {
 
   // Handle Arduino connection status change
   const handleArduinoConnectionChange = useCallback((connected: boolean) => {
-    setIsArduinoConnected(connected);
+    // No need to manually set this as the useArduinoSerial hook manages the connection state
   }, []);
 
   // Handle plant profile selection
   const handleSelectPlant = useCallback((plant: PlantProfile) => {
     setSelectedPlant(plant);
   }, [setSelectedPlant]);
+  
+  // Determine if we should show components that require Arduino connection
+  // When simulation is enabled, show everything regardless of actual connection
+  const showArduinoComponents = isConnected || useSimulation;
   
   return (
     <div className="container py-6">
@@ -82,7 +89,7 @@ const Dashboard: React.FC = () => {
         fertilizerMotorStatus={data.fertilizerMotorStatus}
         lastWatered={data.lastWatered}
         lastFertilized={data.lastFertilized}
-        isArduinoConnected={isArduinoConnected}
+        isArduinoConnected={showArduinoComponents}
       />
       
       {/* Plant Profile Selector - Moved to the top for better visibility */}
@@ -97,7 +104,7 @@ const Dashboard: React.FC = () => {
         <MoistureGauge 
           currentMoisture={data.currentMoisture} 
           optimalRange={data.optimalRange}
-          isArduinoConnected={isArduinoConnected}
+          isArduinoConnected={showArduinoComponents}
         />
         
         <ControlPanel 
@@ -113,12 +120,12 @@ const Dashboard: React.FC = () => {
           onChangeFertilizerDuration={setFertilizerDuration}
           lastWatered={data.lastWatered}
           lastFertilized={data.lastFertilized}
-          isArduinoConnected={isArduinoConnected}
+          isArduinoConnected={showArduinoComponents}
         />
         
         <HistoryChart 
           data={data.historyData} 
-          isArduinoConnected={isArduinoConnected}
+          isArduinoConnected={true} // Always show history chart
         />
       </div>
       
@@ -147,7 +154,7 @@ const Dashboard: React.FC = () => {
       
       {/* Invisible notification system */}
       <NotificationSystem 
-        isMoistureCritical={isMoistureCritical && isArduinoConnected} 
+        isMoistureCritical={isMoistureCritical && showArduinoComponents} 
         moistureLevel={data.currentMoisture}
       />
     </div>

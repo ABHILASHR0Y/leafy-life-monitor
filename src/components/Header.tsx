@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { Flower } from 'lucide-react';
-import { useSerialConnection } from '@/hooks/useSerialConnection';
+import { useArduinoSerial } from '@/hooks/useArduinoSerial';
 import ArduinoSettingsMenu from './ArduinoSettingsMenu';
 
 const Header: React.FC = () => {
-  const { isConnected, connectionError } = useSerialConnection();
+  const { isConnected, connectionError } = useArduinoSerial();
   
   return (
     <header className="bg-card border-b border-border py-3">
