@@ -221,7 +221,9 @@ export function usePlantData() {
       // Update water motor status if provided
       if ('water_motor' in arduinoData) {
         const wasActive = prev.waterMotorStatus === 'active';
-        newData.waterMotorStatus = arduinoData.water_motor ? 'active' as MotorStatus : 'idle' as MotorStatus;
+        // Fix: Ensure we're using the correct type by using type assertion
+        const newStatus: MotorStatus = arduinoData.water_motor ? 'active' : 'idle';
+        newData.waterMotorStatus = newStatus;
         
         // If motor just turned off, update last watered time and save to database
         if (!arduinoData.water_motor && wasActive) {
@@ -241,7 +243,9 @@ export function usePlantData() {
       // Update fertilizer motor status if provided
       if ('fertilizer_motor' in arduinoData) {
         const wasActive = prev.fertilizerMotorStatus === 'active';
-        newData.fertilizerMotorStatus = arduinoData.fertilizer_motor ? 'active' as MotorStatus : 'idle' as MotorStatus;
+        // Fix: Ensure we're using the correct type by using type assertion
+        const newStatus: MotorStatus = arduinoData.fertilizer_motor ? 'active' : 'idle';
+        newData.fertilizerMotorStatus = newStatus;
         
         // If motor just turned off, update last fertilized time and save to database
         if (!arduinoData.fertilizer_motor && wasActive) {
@@ -387,10 +391,13 @@ export function usePlantData() {
                                    newMoisture <= prev.optimalRange[0] * 0.7 && 
                                    prev.waterMotorStatus === 'idle';
         
+        // Fix: Ensure we're using the correct type
+        const newStatus: MotorStatus = shouldActivateWater ? 'active' : prev.waterMotorStatus;
+        
         return {
           ...prev,
           currentMoisture: newMoisture,
-          waterMotorStatus: shouldActivateWater ? 'active' : prev.waterMotorStatus
+          waterMotorStatus: newStatus
         };
       });
     }, 2000);
@@ -453,7 +460,8 @@ export function usePlantData() {
   // Modified function to manually activate water motor
   const activateWaterMotor = useCallback(() => {
     setData(prev => {
-      const newData = { ...prev, waterMotorStatus: 'active' };
+      // Fix: Ensure we're using the correct MotorStatus type
+      const newData = { ...prev, waterMotorStatus: 'active' as MotorStatus };
       
       // If a plant is selected, schedule saving the watering event when the motor stops
       if (prev.selectedPlantId) {
@@ -480,7 +488,8 @@ export function usePlantData() {
   // Modified function to manually activate fertilizer motor
   const activateFertilizerMotor = useCallback(() => {
     setData(prev => {
-      const newData = { ...prev, fertilizerMotorStatus: 'active' };
+      // Fix: Ensure we're using the correct MotorStatus type
+      const newData = { ...prev, fertilizerMotorStatus: 'active' as MotorStatus };
       
       // If a plant is selected, schedule saving the fertilizer event when the motor stops
       if (prev.selectedPlantId) {
