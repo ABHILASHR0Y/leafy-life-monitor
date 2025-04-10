@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { PlantProfile } from '@/data/plants';
 import { supabase } from '@/integrations/supabase/client';
@@ -222,7 +221,7 @@ export function usePlantData() {
       // Update water motor status if provided
       if ('water_motor' in arduinoData) {
         const wasActive = prev.waterMotorStatus === 'active';
-        newData.waterMotorStatus = arduinoData.water_motor ? 'active' : 'idle';
+        newData.waterMotorStatus = arduinoData.water_motor ? 'active' as MotorStatus : 'idle' as MotorStatus;
         
         // If motor just turned off, update last watered time and save to database
         if (!arduinoData.water_motor && wasActive) {
@@ -242,7 +241,7 @@ export function usePlantData() {
       // Update fertilizer motor status if provided
       if ('fertilizer_motor' in arduinoData) {
         const wasActive = prev.fertilizerMotorStatus === 'active';
-        newData.fertilizerMotorStatus = arduinoData.fertilizer_motor ? 'active' : 'idle';
+        newData.fertilizerMotorStatus = arduinoData.fertilizer_motor ? 'active' as MotorStatus : 'idle' as MotorStatus;
         
         // If motor just turned off, update last fertilized time and save to database
         if (!arduinoData.fertilizer_motor && wasActive) {
