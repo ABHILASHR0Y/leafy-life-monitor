@@ -62,6 +62,27 @@ export function usePlantData() {
             customWateringDays: plant.custom_watering_days || prev.customWateringDays,
           }));
 
+          // Load watering events first to ensure we have the latest data
+          const eventsResult = await plantDataService.loadWateringEvents(plant.id);
+          
+          if (eventsResult) {
+            const { waterEvents, fertEvents } = eventsResult;
+            
+            if (waterEvents && waterEvents.length > 0) {
+              setData(prev => ({ 
+                ...prev, 
+                lastWatered: new Date(waterEvents[0].timestamp as string) 
+              }));
+            }
+            
+            if (fertEvents && fertEvents.length > 0) {
+              setData(prev => ({ 
+                ...prev, 
+                lastFertilized: new Date(fertEvents[0].timestamp as string) 
+              }));
+            }
+          }
+
           // Load moisture and watering history
           const historyResult = await plantDataService.loadMoistureHistory(plant.id);
           if (historyResult) {
@@ -90,31 +111,58 @@ export function usePlantData() {
               };
             });
             
+            // Add latest watering events if they aren't already in the history
+            if (eventsResult && eventsResult.waterEvents?.length > 0) {
+              const latestWaterEvent = eventsResult.waterEvents[0];
+              const latestWaterTime = new Date(latestWaterEvent.timestamp as string);
+              
+              // Check if the latest water event is already in the history data
+              const waterEventExists = historyData.some(point => 
+                point.waterMotor && 
+                Math.abs(point.timestamp.getTime() - latestWaterTime.getTime()) < 5 * 60 * 1000
+              );
+              
+              // If not, add it
+              if (!waterEventExists) {
+                historyData.push({
+                  timestamp: latestWaterTime,
+                  moisture: historyData.length > 0 ? historyData[historyData.length - 1].moisture : 0,
+                  waterMotor: true,
+                  fertilizerMotor: false
+                });
+              }
+            }
+            
+            // Add latest fertilizer events if they aren't already in the history
+            if (eventsResult && eventsResult.fertEvents?.length > 0) {
+              const latestFertEvent = eventsResult.fertEvents[0];
+              const latestFertTime = new Date(latestFertEvent.timestamp as string);
+              
+              // Check if the latest fertilizer event is already in the history data
+              const fertEventExists = historyData.some(point => 
+                point.fertilizerMotor && 
+                Math.abs(point.timestamp.getTime() - latestFertTime.getTime()) < 5 * 60 * 1000
+              );
+              
+              // If not, add it
+              if (!fertEventExists) {
+                historyData.push({
+                  timestamp: latestFertTime,
+                  moisture: historyData.length > 0 ? historyData[historyData.length - 1].moisture : 0,
+                  waterMotor: false,
+                  fertilizerMotor: true
+                });
+              }
+            }
+            
+            // Sort the historyData by timestamp to ensure chronological order
+            historyData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+            
             setData(prev => ({
               ...prev,
               historyData,
-              currentMoisture: historyData[0]?.moisture || prev.currentMoisture
+              currentMoisture: historyData.length > 0 ? historyData[historyData.length - 1].moisture : prev.currentMoisture
             }));
-          }
-          
-          // Load last watering/fertilizer events
-          const eventsResult = await plantDataService.loadWateringEvents(plant.id);
-          if (eventsResult) {
-            const { waterEvents, fertEvents } = eventsResult;
-            
-            if (waterEvents && waterEvents.length > 0) {
-              setData(prev => ({ 
-                ...prev, 
-                lastWatered: new Date(waterEvents[0].timestamp as string) 
-              }));
-            }
-            
-            if (fertEvents && fertEvents.length > 0) {
-              setData(prev => ({ 
-                ...prev, 
-                lastFertilized: new Date(fertEvents[0].timestamp as string) 
-              }));
-            }
           }
         }
       } catch (err) {

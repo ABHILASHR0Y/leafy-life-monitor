@@ -48,7 +48,10 @@ const HistoryChart: React.FC<HistoryChartProps> = ({
     }
 
     // Regular data processing for online mode
-    return data.map(point => ({
+    // Sort by timestamp to ensure chronological order
+    const sortedData = [...data].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    
+    return sortedData.map(point => ({
       time: point.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       fullTime: point.timestamp.toLocaleString(),
       moisture: point.moisture,

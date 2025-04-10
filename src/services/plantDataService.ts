@@ -105,26 +105,24 @@ export const loadMoistureHistory = async (plantId: string) => {
       return null;
     }
 
-    if (readings && readings.length > 0) {
-      // We need to find watering events to correlate with moisture readings
-      const { data: waterEvents } = await supabase
-        .from('watering_events')
-        .select('*')
-        .eq('plant_id', plantId)
-        .eq('event_type', 'water')
-        .order('timestamp', { ascending: false });
+    // We need to find all watering events for correlation with moisture readings
+    const { data: waterEvents } = await supabase
+      .from('watering_events')
+      .select('*')
+      .eq('plant_id', plantId)
+      .eq('event_type', 'water')
+      .order('timestamp', { ascending: false })
+      .limit(25);  // Increased limit to ensure we catch all relevant water events
 
-      const { data: fertilizerEvents } = await supabase
-        .from('watering_events')
-        .select('*')
-        .eq('plant_id', plantId)
-        .eq('event_type', 'fertilizer')
-        .order('timestamp', { ascending: false });
+    const { data: fertilizerEvents } = await supabase
+      .from('watering_events')
+      .select('*')
+      .eq('plant_id', plantId)
+      .eq('event_type', 'fertilizer')
+      .order('timestamp', { ascending: false })
+      .limit(25);  // Increased limit to ensure we catch all relevant fertilizer events
 
-      return { readings, waterEvents, fertilizerEvents };
-    }
-    
-    return null;
+    return { readings: readings || [], waterEvents, fertilizerEvents };
   } catch (err) {
     console.error('Failed to load moisture history:', err);
     return null;
