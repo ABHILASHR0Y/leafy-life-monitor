@@ -28,14 +28,35 @@ const HistoryChart: React.FC<HistoryChartProps> = ({
 }) => {
   // Format data for the chart
   const chartData = useMemo(() => {
+    // If no data or not connected to Arduino, create simulated offline data
+    if (!isArduinoConnected || data.length === 0) {
+      // Generate flat line data points for offline visualization
+      const offlineData = [];
+      const now = new Date();
+      for (let i = 12; i >= 0; i--) {
+        const timestamp = new Date(now.getTime() - i * 30 * 60 * 1000); // 30-minute intervals
+        offlineData.push({
+          time: timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          fullTime: timestamp.toLocaleString(),
+          moisture: 0, // Flat line at 0
+          waterMotor: 0,
+          fertilizerMotor: 0,
+          offline: true // Mark as offline data
+        });
+      }
+      return offlineData;
+    }
+
+    // Regular data processing for online mode
     return data.map(point => ({
       time: point.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       fullTime: point.timestamp.toLocaleString(),
       moisture: point.moisture,
       waterMotor: point.waterMotor ? 1 : 0,
-      fertilizerMotor: point.fertilizerMotor ? 1 : 0
+      fertilizerMotor: point.fertilizerMotor ? 1 : 0,
+      offline: false
     }));
-  }, [data]);
+  }, [data, isArduinoConnected]);
   
   // Get today's data only
   const todayData = useMemo(() => {
@@ -49,6 +70,18 @@ const HistoryChart: React.FC<HistoryChartProps> = ({
   // Custom tooltip component
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      // Handle offline data specially
+      const isOffline = payload[0].payload.offline;
+      
+      if (isOffline) {
+        return (
+          <div className="bg-card p-3 border rounded-md shadow-md">
+            <p className="text-sm font-medium">{label}</p>
+            <p className="text-xs text-red-500">Sensor disconnected</p>
+          </div>
+        );
+      }
+      
       return (
         <div className="bg-card p-3 border rounded-md shadow-md">
           <p className="text-sm font-medium">{label}</p>
@@ -80,8 +113,8 @@ const HistoryChart: React.FC<HistoryChartProps> = ({
           </CardTitle>
           {!isArduinoConnected && (
             <p className="text-sm text-muted-foreground">
-              <WifiOff className="h-4 w-4 inline-block mr-2" />
-              Using simulated data - Connect Arduino for real-time data
+              <WifiOff className="h-4 w-4 inline-block mr-2 text-red-500" />
+              Sensor disconnected - Showing offline visualization
             </p>
           )}
         </div>
@@ -109,13 +142,30 @@ const HistoryChart: React.FC<HistoryChartProps> = ({
                 <LineChart data={todayData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#6666661a" />
                   <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-                  <YAxis yAxisId="left" domain={[0, 100]} label={{ value: 'Moisture (%)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }} />
+                  <YAxis 
+                    yAxisId="left" 
+                    domain={[0, 100]} 
+                    label={{ value: 'Moisture (%)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }} 
+                  />
                   <YAxis yAxisId="right" orientation="right" domain={[0, 1.1]} hide />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="moisture" stroke="#4CAF50" dot={{ r: 2 }} activeDot={{ r: 5 }} name="Moisture" />
-                  <Line yAxisId="right" type="monotone" dataKey="waterMotor" stroke="#03A9F4" strokeWidth={2} dot={{ r: 2 }} name="Water Motor" />
-                  <Line yAxisId="right" type="monotone" dataKey="fertilizerMotor" stroke="#9C27B0" strokeWidth={2} dot={{ r: 2 }} name="Fertilizer Motor" />
+                  <Line 
+                    yAxisId="left" 
+                    type="monotone" 
+                    dataKey="moisture" 
+                    stroke={!isArduinoConnected ? "#EF4444" : "#4CAF50"} 
+                    strokeWidth={!isArduinoConnected ? 2 : 1.5}
+                    dot={{ r: isArduinoConnected ? 2 : 0 }} 
+                    activeDot={{ r: isArduinoConnected ? 5 : 0 }} 
+                    name={isArduinoConnected ? "Moisture" : "Sensor Disconnected"} 
+                  />
+                  {isArduinoConnected && (
+                    <>
+                      <Line yAxisId="right" type="monotone" dataKey="waterMotor" stroke="#03A9F4" strokeWidth={2} dot={{ r: 2 }} name="Water Motor" />
+                      <Line yAxisId="right" type="monotone" dataKey="fertilizerMotor" stroke="#9C27B0" strokeWidth={2} dot={{ r: 2 }} name="Fertilizer Motor" />
+                    </>
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -127,13 +177,30 @@ const HistoryChart: React.FC<HistoryChartProps> = ({
                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#6666661a" />
                   <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-                  <YAxis yAxisId="left" domain={[0, 100]} label={{ value: 'Moisture (%)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }} />
+                  <YAxis 
+                    yAxisId="left" 
+                    domain={[0, 100]} 
+                    label={{ value: 'Moisture (%)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }} 
+                  />
                   <YAxis yAxisId="right" orientation="right" domain={[0, 1.1]} hide />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="moisture" stroke="#4CAF50" dot={{ r: 2 }} activeDot={{ r: 5 }} name="Moisture" />
-                  <Line yAxisId="right" type="monotone" dataKey="waterMotor" stroke="#03A9F4" strokeWidth={2} dot={{ r: 2 }} name="Water Motor" />
-                  <Line yAxisId="right" type="monotone" dataKey="fertilizerMotor" stroke="#9C27B0" strokeWidth={2} dot={{ r: 2 }} name="Fertilizer Motor" />
+                  <Line 
+                    yAxisId="left" 
+                    type="monotone" 
+                    dataKey="moisture" 
+                    stroke={!isArduinoConnected ? "#EF4444" : "#4CAF50"} 
+                    strokeWidth={!isArduinoConnected ? 2 : 1.5}
+                    dot={{ r: isArduinoConnected ? 2 : 0 }} 
+                    activeDot={{ r: isArduinoConnected ? 5 : 0 }} 
+                    name={isArduinoConnected ? "Moisture" : "Sensor Disconnected"} 
+                  />
+                  {isArduinoConnected && (
+                    <>
+                      <Line yAxisId="right" type="monotone" dataKey="waterMotor" stroke="#03A9F4" strokeWidth={2} dot={{ r: 2 }} name="Water Motor" />
+                      <Line yAxisId="right" type="monotone" dataKey="fertilizerMotor" stroke="#9C27B0" strokeWidth={2} dot={{ r: 2 }} name="Fertilizer Motor" />
+                    </>
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </div>

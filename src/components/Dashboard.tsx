@@ -10,13 +10,15 @@ import PlantConfigCard from './PlantConfigCard';
 import PlantProfileSelector from './PlantProfileSelector';
 import { usePlantData } from '@/hooks/usePlantData';
 import { useArduinoSerial } from '@/hooks/useArduinoSerial';
-import { Leaf, Database } from 'lucide-react';
+import { Leaf, Database, RefreshCw } from 'lucide-react';
 import { PlantProfile } from '@/data/plants';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 const Dashboard: React.FC = () => {
   const { isConnected } = useArduinoSerial();
   const { toast } = useToast();
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   
   const { 
     data, 
@@ -48,6 +50,7 @@ const Dashboard: React.FC = () => {
   const handleArduinoData = useCallback((arduinoData: any) => {
     if (arduinoData && isConnected) {
       updateFromArduino(arduinoData);
+      setLastSyncTime(new Date());
     }
   }, [updateFromArduino, isConnected]);
 
@@ -67,12 +70,14 @@ const Dashboard: React.FC = () => {
         title: "Arduino Connected",
         description: "Now receiving real sensor data"
       });
+      setLastSyncTime(new Date());
     }
   }, [toast]);
 
   // Handle plant profile selection
   const handleSelectPlant = useCallback((plant: PlantProfile) => {
     setSelectedPlant(plant);
+    setLastSyncTime(new Date());
   }, [setSelectedPlant]);
   
   // Refresh data from database
@@ -85,10 +90,22 @@ const Dashboard: React.FC = () => {
         const plant = getPlantById(plantId);
         if (plant) {
           setSelectedPlant(plant);
+          setLastSyncTime(new Date());
+          toast({
+            title: "Data Refreshed",
+            description: "Latest plant data loaded from database"
+          });
         }
       });
     }
-  }, [data.selectedPlantId, setSelectedPlant]);
+  }, [data.selectedPlantId, setSelectedPlant, toast]);
+  
+  // Force a data refresh on component mount
+  useEffect(() => {
+    if (data.selectedPlantId) {
+      handleRefreshData();
+    }
+  }, []);
   
   // Determine if we should show components that require Arduino connection
   // When simulation is enabled, show everything regardless of actual connection
@@ -106,8 +123,20 @@ const Dashboard: React.FC = () => {
           </span>
         </h2>
         
-        <div className="text-sm text-muted-foreground">
-          Last updated: {new Date().toLocaleTimeString()}
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefreshData}
+            disabled={isLoading}
+            className="flex items-center gap-1"
+          >
+            <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+            Sync Data
+          </Button>
+          <div className="text-sm text-muted-foreground">
+            Last synced: {lastSyncTime.toLocaleTimeString()}
+          </div>
         </div>
       </div>
       
@@ -153,7 +182,7 @@ const Dashboard: React.FC = () => {
         
         <HistoryChart 
           data={data.historyData} 
-          isArduinoConnected={true} // Always show history chart
+          isArduinoConnected={showArduinoComponents}
           onRefresh={handleRefreshData}
           isLoading={isLoading}
         />

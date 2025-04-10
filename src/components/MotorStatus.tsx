@@ -3,6 +3,7 @@ import React from 'react';
 import { Droplet, Beaker, Clock, Calendar, WifiOff } from 'lucide-react';
 import { MotorStatus as MotorStatusType } from '@/hooks/usePlantDataTypes';
 import StatusCard from './StatusCard';
+import { format, formatDistanceToNow } from 'date-fns';
 
 interface MotorStatusProps {
   waterMotorStatus: MotorStatusType;
@@ -19,38 +20,24 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
   lastFertilized,
   isArduinoConnected
 }) => {
-  const getLastWateredText = () => {
-    if (!lastWatered) return 'Never';
+  const formatLastAction = (date: Date | null) => {
+    if (!date) return 'Never';
     
-    const now = new Date();
-    const diffMs = now.getTime() - lastWatered.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    
-    if (diffMins < 60) {
-      return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
-    } else {
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      if (diffHours < 24) {
-        return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-      } else {
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-      }
-    }
-  };
-  
-  const getLastFertilizedText = () => {
-    if (!lastFertilized) return 'Never';
-    
-    const now = new Date();
-    const diffMs = now.getTime() - lastFertilized.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    
-    if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-    } else {
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    try {
+      // First try using formatDistanceToNow for a relative time
+      const relativeTime = formatDistanceToNow(date, { addSuffix: true });
+      
+      // Add exact timestamp as title attribute for hover
+      const exactTime = format(date, 'MMM d, yyyy HH:mm');
+      
+      return (
+        <span title={exactTime}>
+          {relativeTime}
+        </span>
+      );
+    } catch (err) {
+      console.error('Date formatting error:', err);
+      return 'Unknown';
     }
   };
   
@@ -67,7 +54,7 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
         
         <StatusCard 
           title="Last Watered"
-          value={getLastWateredText()}
+          value={formatLastAction(lastWatered)}
           icon={Clock}
           iconColor="text-blue-500"
         />
@@ -82,7 +69,7 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
         
         <StatusCard 
           title="Last Fertilized"
-          value={getLastFertilizedText()}
+          value={formatLastAction(lastFertilized)}
           icon={Calendar}
           iconColor="text-purple-500"
         />
@@ -102,7 +89,7 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
       
       <StatusCard 
         title="Last Watered"
-        value={getLastWateredText()}
+        value={formatLastAction(lastWatered)}
         icon={Clock}
         iconColor="text-blue-500"
       />
@@ -117,7 +104,7 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
       
       <StatusCard 
         title="Last Fertilized"
-        value={getLastFertilizedText()}
+        value={formatLastAction(lastFertilized)}
         icon={Calendar}
         iconColor="text-purple-500"
       />
