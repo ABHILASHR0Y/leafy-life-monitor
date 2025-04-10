@@ -1,7 +1,9 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { PlantProfile } from '@/data/plants';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Database } from '@/integrations/supabase/types';
 
 export type MotorStatus = 'idle' | 'active' | 'error';
 export type WateringMode = 'automatic' | 'manual';
@@ -129,20 +131,20 @@ export function usePlantData() {
         // Transform readings to match historyData format
         const historyData = readings.map(reading => {
           // Find if there was a watering event close to this reading (within 5 minutes)
-          const readingTime = new Date(reading.timestamp).getTime();
+          const readingTime = new Date(reading.timestamp as string).getTime();
           
           const waterMotor = waterEvents ? waterEvents.some(event => {
-            const eventTime = new Date(event.timestamp).getTime();
+            const eventTime = new Date(event.timestamp as string).getTime();
             return Math.abs(eventTime - readingTime) < 5 * 60 * 1000; // 5 minutes
           }) : false;
           
           const fertilizerMotor = fertilizerEvents ? fertilizerEvents.some(event => {
-            const eventTime = new Date(event.timestamp).getTime();
+            const eventTime = new Date(event.timestamp as string).getTime();
             return Math.abs(eventTime - readingTime) < 5 * 60 * 1000; // 5 minutes
           }) : false;
 
           return {
-            timestamp: new Date(reading.timestamp),
+            timestamp: new Date(reading.timestamp as string),
             moisture: reading.moisture_level,
             waterMotor,
             fertilizerMotor
@@ -175,7 +177,7 @@ export function usePlantData() {
       if (waterError) {
         console.error('Error loading water events:', waterError);
       } else if (waterEvents && waterEvents.length > 0) {
-        const lastWatered = new Date(waterEvents[0].timestamp);
+        const lastWatered = new Date(waterEvents[0].timestamp as string);
         setData(prev => ({ ...prev, lastWatered }));
       }
 
@@ -191,7 +193,7 @@ export function usePlantData() {
       if (fertError) {
         console.error('Error loading fertilizer events:', fertError);
       } else if (fertEvents && fertEvents.length > 0) {
-        const lastFertilized = new Date(fertEvents[0].timestamp);
+        const lastFertilized = new Date(fertEvents[0].timestamp as string);
         setData(prev => ({ ...prev, lastFertilized }));
       }
     } catch (err) {
@@ -682,12 +684,14 @@ export function usePlantData() {
           return;
         }
         
-        plantId = newPlant.id;
+        if (newPlant) {
+          plantId = newPlant.id;
         
-        toast({
-          title: "Plant Profile Created",
-          description: `${plant.name} has been saved to database`
-        });
+          toast({
+            title: "Plant Profile Created",
+            description: `${plant.name} has been saved to database`
+          });
+        }
       }
       
       // Calculate next watering date based on plant's frequency
@@ -714,23 +718,25 @@ export function usePlantData() {
           nextDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // Default to 3 days
       }
       
-      // Load history data for this plant
-      loadMoistureHistory(plantId);
-      loadWateringEvents(plantId);
-      
-      setData(prev => ({
-        ...prev,
-        selectedPlantId: plantId,
-        optimalRange: plant.idealMoistureRange,
-        wateringFrequency: plant.wateringFrequency,
-        customWateringDays: plant.customWateringDays || prev.customWateringDays,
-        nextScheduledWatering: nextDate
-      }));
-      
-      toast({
-        title: "Plant Profile Loaded",
-        description: `${plant.name} has been loaded from database`
-      });
+      if (plantId) {
+        // Load history data for this plant
+        loadMoistureHistory(plantId);
+        loadWateringEvents(plantId);
+        
+        setData(prev => ({
+          ...prev,
+          selectedPlantId: plantId,
+          optimalRange: plant.idealMoistureRange,
+          wateringFrequency: plant.wateringFrequency,
+          customWateringDays: plant.customWateringDays || prev.customWateringDays,
+          nextScheduledWatering: nextDate
+        }));
+        
+        toast({
+          title: "Plant Profile Loaded",
+          description: `${plant.name} has been loaded from database`
+        });
+      }
     } catch (err) {
       console.error('Error setting selected plant:', err);
     }
