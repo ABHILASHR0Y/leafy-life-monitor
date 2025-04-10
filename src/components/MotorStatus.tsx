@@ -30,14 +30,19 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
       // Add exact timestamp as title attribute for hover
       const exactTime = format(date, 'MMM d, yyyy HH:mm');
       
-      return (
-        <span title={exactTime}>
-          {relativeTime}
-        </span>
-      );
+      return relativeTime;
     } catch (err) {
       console.error('Date formatting error:', err);
       return 'Unknown';
+    }
+  };
+  
+  const getTimeTooltip = (date: Date | null) => {
+    if (!date) return '';
+    try {
+      return format(date, 'MMM d, yyyy HH:mm');
+    } catch (err) {
+      return '';
     }
   };
   
@@ -55,6 +60,7 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
         <StatusCard 
           title="Last Watered"
           value={formatLastAction(lastWatered)}
+          tooltip={getTimeTooltip(lastWatered)}
           icon={Clock}
           iconColor="text-blue-500"
         />
@@ -70,6 +76,7 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
         <StatusCard 
           title="Last Fertilized"
           value={formatLastAction(lastFertilized)}
+          tooltip={getTimeTooltip(lastFertilized)}
           icon={Calendar}
           iconColor="text-purple-500"
         />
@@ -90,6 +97,7 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
       <StatusCard 
         title="Last Watered"
         value={formatLastAction(lastWatered)}
+        tooltip={getTimeTooltip(lastWatered)}
         icon={Clock}
         iconColor="text-blue-500"
       />
@@ -105,6 +113,7 @@ const MotorStatus: React.FC<MotorStatusProps> = ({
       <StatusCard 
         title="Last Fertilized"
         value={formatLastAction(lastFertilized)}
+        tooltip={getTimeTooltip(lastFertilized)}
         icon={Calendar}
         iconColor="text-purple-500"
       />
