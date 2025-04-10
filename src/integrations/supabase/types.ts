@@ -9,7 +9,97 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      moisture_readings: {
+        Row: {
+          id: string
+          moisture_level: number
+          plant_id: string | null
+          timestamp: string | null
+        }
+        Insert: {
+          id?: string
+          moisture_level: number
+          plant_id?: string | null
+          timestamp?: string | null
+        }
+        Update: {
+          id?: string
+          moisture_level?: number
+          plant_id?: string | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moisture_readings_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plants: {
+        Row: {
+          created_at: string | null
+          custom_watering_days: number | null
+          id: string
+          ideal_moisture_max: number
+          ideal_moisture_min: number
+          name: string
+          watering_frequency: string
+        }
+        Insert: {
+          created_at?: string | null
+          custom_watering_days?: number | null
+          id?: string
+          ideal_moisture_max: number
+          ideal_moisture_min: number
+          name: string
+          watering_frequency: string
+        }
+        Update: {
+          created_at?: string | null
+          custom_watering_days?: number | null
+          id?: string
+          ideal_moisture_max?: number
+          ideal_moisture_min?: number
+          name?: string
+          watering_frequency?: string
+        }
+        Relationships: []
+      }
+      watering_events: {
+        Row: {
+          duration: number
+          event_type: string
+          id: string
+          plant_id: string | null
+          timestamp: string | null
+        }
+        Insert: {
+          duration: number
+          event_type: string
+          id?: string
+          plant_id?: string | null
+          timestamp?: string | null
+        }
+        Update: {
+          duration?: number
+          event_type?: string
+          id?: string
+          plant_id?: string | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watering_events_plant_id_fkey"
+            columns: ["plant_id"]
+            isOneToOne: false
+            referencedRelation: "plants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

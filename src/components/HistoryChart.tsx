@@ -3,7 +3,8 @@ import React, { useMemo } from 'react';
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart4, WifiOff } from 'lucide-react';
+import { BarChart4, WifiOff, Database, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DataPoint {
   timestamp: Date;
@@ -15,9 +16,16 @@ interface DataPoint {
 interface HistoryChartProps {
   data: DataPoint[];
   isArduinoConnected: boolean;
+  onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
-const HistoryChart: React.FC<HistoryChartProps> = ({ data, isArduinoConnected }) => {
+const HistoryChart: React.FC<HistoryChartProps> = ({ 
+  data, 
+  isArduinoConnected, 
+  onRefresh,
+  isLoading = false
+}) => {
   // Format data for the chart
   const chartData = useMemo(() => {
     return data.map(point => ({
@@ -64,13 +72,28 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ data, isArduinoConnected })
   // Show chart with real or simulated data
   return (
     <Card className="col-span-2">
-      <CardHeader>
-        <CardTitle>Moisture History</CardTitle>
-        {!isArduinoConnected && (
-          <p className="text-sm text-muted-foreground">
-            <WifiOff className="h-4 w-4 inline-block mr-2" />
-            Using simulated data - Connect Arduino for real-time data
-          </p>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            Moisture History
+            <Database className="h-4 w-4 text-primary" />
+          </CardTitle>
+          {!isArduinoConnected && (
+            <p className="text-sm text-muted-foreground">
+              <WifiOff className="h-4 w-4 inline-block mr-2" />
+              Using simulated data - Connect Arduino for real-time data
+            </p>
+          )}
+        </div>
+        {onRefresh && (
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={onRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
         )}
       </CardHeader>
       <CardContent>

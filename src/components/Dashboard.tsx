@@ -10,11 +10,13 @@ import PlantConfigCard from './PlantConfigCard';
 import PlantProfileSelector from './PlantProfileSelector';
 import { usePlantData } from '@/hooks/usePlantData';
 import { useArduinoSerial } from '@/hooks/useArduinoSerial';
-import { Leaf } from 'lucide-react';
+import { Leaf, Database } from 'lucide-react';
 import { PlantProfile } from '@/data/plants';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard: React.FC = () => {
   const { isConnected } = useArduinoSerial();
+  const { toast } = useToast();
   
   const { 
     data, 
@@ -30,7 +32,8 @@ const Dashboard: React.FC = () => {
     isMoistureCritical,
     updateFromArduino,
     setUseSimulation,
-    useSimulation
+    useSimulation,
+    isLoading
   } = usePlantData();
   
   // Update plant data hook when Arduino connection changes
@@ -59,12 +62,33 @@ const Dashboard: React.FC = () => {
   // Handle Arduino connection status change
   const handleArduinoConnectionChange = useCallback((connected: boolean) => {
     // No need to manually set this as the useArduinoSerial hook manages the connection state
-  }, []);
+    if (connected) {
+      toast({
+        title: "Arduino Connected",
+        description: "Now receiving real sensor data"
+      });
+    }
+  }, [toast]);
 
   // Handle plant profile selection
   const handleSelectPlant = useCallback((plant: PlantProfile) => {
     setSelectedPlant(plant);
   }, [setSelectedPlant]);
+  
+  // Refresh data from database
+  const handleRefreshData = useCallback(() => {
+    if (data.selectedPlantId) {
+      // This will trigger a reload of the plant from the database
+      // We need to get the current plant profile from the list
+      const plantId = data.selectedPlantId;
+      import('@/data/plants').then(({ getPlantById }) => {
+        const plant = getPlantById(plantId);
+        if (plant) {
+          setSelectedPlant(plant);
+        }
+      });
+    }
+  }, [data.selectedPlantId, setSelectedPlant]);
   
   // Determine if we should show components that require Arduino connection
   // When simulation is enabled, show everything regardless of actual connection
@@ -76,6 +100,10 @@ const Dashboard: React.FC = () => {
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Leaf className="h-6 w-6 text-plant" />
           Plant Dashboard
+          <span className="ml-2 text-sm bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center gap-1">
+            <Database className="h-3 w-3" />
+            Database Connected
+          </span>
         </h2>
         
         <div className="text-sm text-muted-foreground">
@@ -126,6 +154,8 @@ const Dashboard: React.FC = () => {
         <HistoryChart 
           data={data.historyData} 
           isArduinoConnected={true} // Always show history chart
+          onRefresh={handleRefreshData}
+          isLoading={isLoading}
         />
       </div>
       
