@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { Droplet, Beaker, AlertCircle, Clock, Settings, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MotorStatus, WateringMode } from '@/hooks/usePlantData';
+import { MotorStatus, WateringMode } from '@/hooks/usePlantDataTypes';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

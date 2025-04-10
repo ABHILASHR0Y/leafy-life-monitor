@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Droplet, Beaker, Clock, Calendar, WifiOff } from 'lucide-react';
-import { MotorStatus as MotorStatusType } from '@/hooks/usePlantData';
+import { MotorStatus as MotorStatusType } from '@/hooks/usePlantDataTypes';
 import StatusCard from './StatusCard';
 
 interface MotorStatusProps {

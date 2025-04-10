@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CalendarClock, Droplet, Settings, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { WateringFrequency } from '@/hooks/usePlantData';
+import { WateringFrequency } from '@/hooks/usePlantDataTypes';
 import { format } from 'date-fns';
 import { getPlantById } from '@/data/plants';
 
