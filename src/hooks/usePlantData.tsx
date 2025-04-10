@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { PlantProfile } from '@/data/plants';
 import { PlantData, MotorStatus, WateringMode, WateringFrequency } from './usePlantDataTypes';
 import { usePlantOperations } from './usePlantOperations';
 import { usePlantSimulation } from './usePlantSimulation';
-import * as plantDataService from '@/services/plantDataService';
+import * as plantDataService from '@/services';
 
 // This hook manages plant data, with database persistence via Supabase
 export function usePlantData() {

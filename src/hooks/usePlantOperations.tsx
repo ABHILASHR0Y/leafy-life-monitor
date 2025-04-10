@@ -1,9 +1,8 @@
-
 import { useCallback } from 'react';
 import { PlantProfile } from '@/data/plants';
 import { PlantData, WateringFrequency, MotorStatus } from './usePlantDataTypes';
 import { useToast } from '@/hooks/use-toast';
-import * as plantDataService from '@/services/plantDataService';
+import * as plantDataService from '@/services';
 
 export function usePlantOperations(
   data: PlantData,
