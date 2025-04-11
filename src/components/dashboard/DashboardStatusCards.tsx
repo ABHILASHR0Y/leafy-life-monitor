@@ -1,6 +1,6 @@
 
 import React from 'react';
-import MotorStatus from '../MotorStatus';
+import MotorStatus from '../motor-status';
 import { MotorStatus as MotorStatusType } from '@/hooks/usePlantDataTypes';
 
 interface DashboardStatusCardsProps {
