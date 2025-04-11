@@ -1,147 +1,46 @@
 
-import React, { useCallback, useState, useEffect } from 'react';
-import MoistureGauge from './MoistureGauge';
-import ControlPanel from './ControlPanel';
-import HistoryChart from './HistoryChart';
-import MotorStatus from './MotorStatus';
+import React from 'react';
+import DashboardHeader from './dashboard/DashboardHeader';
+import DashboardStatusCards from './dashboard/DashboardStatusCards';
+import DashboardMainContent from './dashboard/DashboardMainContent';
+import DashboardConfigSection from './dashboard/DashboardConfigSection';
 import NotificationSystem from './NotificationSystem';
 import ArduinoConnection from './ArduinoConnection';
-import PlantConfigCard from './PlantConfigCard';
 import PlantProfileSelector from './PlantProfileSelector';
-import { usePlantData } from '@/hooks/usePlantData';
-import { useArduinoSerial } from '@/hooks/useArduinoSerial';
-import { Leaf, Database, RefreshCw } from 'lucide-react';
-import { PlantProfile } from '@/data/plants';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
+import { useDashboard } from '@/hooks/useDashboard';
 
 const Dashboard: React.FC = () => {
-  const { isConnected } = useArduinoSerial();
-  const { toast } = useToast();
-  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
-  
-  const { 
-    data, 
-    activateWaterMotor, 
-    activateFertilizerMotor, 
+  const {
+    data,
+    lastSyncTime,
+    isLoading,
+    showArduinoComponents,
+    activateWaterMotor,
+    activateFertilizerMotor,
     toggleWateringMode,
     setWateringDuration,
     setFertilizerDuration,
     setWateringFrequency,
     setCustomWateringDays,
     setOptimalMoistureRange,
-    setSelectedPlant,
-    isMoistureCritical,
-    updateFromArduino,
-    setUseSimulation,
-    useSimulation,
-    isLoading
-  } = usePlantData();
-  
-  // Update plant data hook when Arduino connection changes
-  useEffect(() => {
-    // If not using simulation and not connected, we use simulation data
-    if (!useSimulation && !isConnected) {
-      // This is handled in the MoistureGauge component now
-    }
-  }, [isConnected, setUseSimulation, useSimulation]);
-  
-  // Handle real data from Arduino
-  const handleArduinoData = useCallback((arduinoData: any) => {
-    if (arduinoData && isConnected) {
-      updateFromArduino(arduinoData);
-      setLastSyncTime(new Date());
-    }
-  }, [updateFromArduino, isConnected]);
-
-  // Forward commands to Arduino via hook
-  const handleSendCommand = useCallback(async (command: string): Promise<boolean> => {
-    console.log('Command forwarded to Arduino:', command);
-    // This function is called after the actual command is sent to Arduino
-    // We can use it to update UI or handle command-specific logic
-    return true;
-  }, []);
-
-  // Handle Arduino connection status change
-  const handleArduinoConnectionChange = useCallback((connected: boolean) => {
-    // No need to manually set this as the useArduinoSerial hook manages the connection state
-    if (connected) {
-      toast({
-        title: "Arduino Connected",
-        description: "Now receiving real sensor data"
-      });
-      setLastSyncTime(new Date());
-    }
-  }, [toast]);
-
-  // Handle plant profile selection
-  const handleSelectPlant = useCallback((plant: PlantProfile) => {
-    setSelectedPlant(plant);
-    setLastSyncTime(new Date());
-  }, [setSelectedPlant]);
-  
-  // Refresh data from database
-  const handleRefreshData = useCallback(() => {
-    if (data.selectedPlantId) {
-      // This will trigger a reload of the plant from the database
-      // We need to get the current plant profile from the list
-      const plantId = data.selectedPlantId;
-      import('@/data/plants').then(({ getPlantById }) => {
-        const plant = getPlantById(plantId);
-        if (plant) {
-          setSelectedPlant(plant);
-          setLastSyncTime(new Date());
-          toast({
-            title: "Data Refreshed",
-            description: "Latest plant data loaded from database"
-          });
-        }
-      });
-    }
-  }, [data.selectedPlantId, setSelectedPlant, toast]);
-  
-  // Force a data refresh on component mount
-  useEffect(() => {
-    if (data.selectedPlantId) {
-      handleRefreshData();
-    }
-  }, []);
-  
-  // Determine if we should show components that require Arduino connection
-  // When simulation is enabled, show everything regardless of actual connection
-  const showArduinoComponents = isConnected || useSimulation;
+    handleSelectPlant,
+    handleRefreshData,
+    handleArduinoData,
+    handleSendCommand,
+    handleArduinoConnectionChange,
+    isMoistureCritical
+  } = useDashboard();
   
   return (
     <div className="container py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Leaf className="h-6 w-6 text-plant" />
-          Plant Dashboard
-          <span className="ml-2 text-sm bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center gap-1">
-            <Database className="h-3 w-3" />
-            Database Connected
-          </span>
-        </h2>
-        
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefreshData}
-            disabled={isLoading}
-            className="flex items-center gap-1"
-          >
-            <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
-            Sync Data
-          </Button>
-          <div className="text-sm text-muted-foreground">
-            Last synced: {lastSyncTime.toLocaleTimeString()}
-          </div>
-        </div>
-      </div>
+      <DashboardHeader 
+        onRefreshData={handleRefreshData}
+        lastSyncTime={lastSyncTime}
+        isLoading={isLoading}
+      />
       
       {/* Status Cards */}
-      <MotorStatus 
+      <DashboardStatusCards 
         waterMotorStatus={data.waterMotorStatus}
         fertilizerMotorStatus={data.fertilizerMotorStatus}
         lastWatered={data.lastWatered}
@@ -149,7 +48,7 @@ const Dashboard: React.FC = () => {
         isArduinoConnected={showArduinoComponents}
       />
       
-      {/* Plant Profile Selector - Moved to the top for better visibility */}
+      {/* Plant Profile Selector */}
       <div className="mt-6">
         <PlantProfileSelector
           selectedPlantId={data.selectedPlantId}
@@ -157,50 +56,39 @@ const Dashboard: React.FC = () => {
         />
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
-        <MoistureGauge 
-          currentMoisture={data.currentMoisture} 
-          optimalRange={data.optimalRange}
-          isArduinoConnected={showArduinoComponents}
-        />
-        
-        <ControlPanel 
-          waterMotorStatus={data.waterMotorStatus}
-          fertilizerMotorStatus={data.fertilizerMotorStatus}
-          wateringMode={data.wateringMode}
-          wateringDuration={data.wateringDuration}
-          fertilizerDuration={data.fertilizerDuration}
-          onActivateWater={activateWaterMotor}
-          onActivateFertilizer={activateFertilizerMotor}
-          onToggleMode={toggleWateringMode}
-          onChangeWaterDuration={setWateringDuration}
-          onChangeFertilizerDuration={setFertilizerDuration}
-          lastWatered={data.lastWatered}
-          lastFertilized={data.lastFertilized}
-          isArduinoConnected={showArduinoComponents}
-        />
-        
-        <HistoryChart 
-          data={data.historyData} 
-          isArduinoConnected={showArduinoComponents}
-          onRefresh={handleRefreshData}
-          isLoading={isLoading}
-        />
-      </div>
+      {/* Main Content Area */}
+      <DashboardMainContent 
+        currentMoisture={data.currentMoisture}
+        optimalRange={data.optimalRange}
+        waterMotorStatus={data.waterMotorStatus}
+        fertilizerMotorStatus={data.fertilizerMotorStatus}
+        wateringMode={data.wateringMode}
+        wateringDuration={data.wateringDuration}
+        fertilizerDuration={data.fertilizerDuration}
+        lastWatered={data.lastWatered}
+        lastFertilized={data.lastFertilized}
+        historyData={data.historyData}
+        isArduinoConnected={showArduinoComponents}
+        onActivateWater={activateWaterMotor}
+        onActivateFertilizer={activateFertilizerMotor}
+        onToggleMode={toggleWateringMode}
+        onChangeWaterDuration={setWateringDuration}
+        onChangeFertilizerDuration={setFertilizerDuration}
+        onRefreshData={handleRefreshData}
+        isLoading={isLoading}
+      />
       
       {/* Plant Config */}
-      <div className="mt-6">
-        <PlantConfigCard
-          optimalRange={data.optimalRange}
-          wateringFrequency={data.wateringFrequency}
-          customWateringDays={data.customWateringDays}
-          nextScheduledWatering={data.nextScheduledWatering}
-          onChangeFrequency={setWateringFrequency}
-          onChangeCustomDays={setCustomWateringDays}
-          onChangeMoistureRange={setOptimalMoistureRange}
-          selectedPlantId={data.selectedPlantId}
-        />
-      </div>
+      <DashboardConfigSection
+        optimalRange={data.optimalRange}
+        wateringFrequency={data.wateringFrequency}
+        customWateringDays={data.customWateringDays}
+        nextScheduledWatering={data.nextScheduledWatering}
+        selectedPlantId={data.selectedPlantId}
+        onChangeFrequency={setWateringFrequency}
+        onChangeCustomDays={setCustomWateringDays}
+        onChangeMoistureRange={setOptimalMoistureRange}
+      />
       
       {/* Arduino Connection Card */}
       <div className="mt-6">
