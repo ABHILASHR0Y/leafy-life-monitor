@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { PlantProfile } from '@/data/plants';
@@ -10,12 +11,12 @@ import * as plantDataService from '@/services';
 export function usePlantData() {
   const { toast } = useToast();
   const [data, setData] = useState<PlantData>({
-    currentMoisture: 65,
+    currentMoisture: 0, // Start with 0 until real data is loaded
     optimalRange: [60, 80],
     waterMotorStatus: 'idle',
     fertilizerMotorStatus: 'idle',
-    lastWatered: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
-    lastFertilized: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+    lastWatered: null, // Initialize as null until data is loaded
+    lastFertilized: null, // Initialize as null until data is loaded
     wateringMode: 'manual', // Default to manual mode
     wateringDuration: 10, // Default 10 seconds
     fertilizerDuration: 10, // Default 10 seconds
@@ -27,8 +28,9 @@ export function usePlantData() {
   });
 
   const [isLoading, setIsLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Get simulation hooks
+  // Get simulation hooks - with parameter to disable simulation if real data exists
   const { useSimulation, setUseSimulation } = usePlantSimulation(data, setData);
 
   // Get plant operations
@@ -49,6 +51,7 @@ export function usePlantData() {
   useEffect(() => {
     const loadInitialPlantData = async () => {
       try {
+        setIsLoading(true);
         const plant = await plantDataService.loadPlantData();
         
         // If we have a plant, set it as selected
@@ -72,6 +75,7 @@ export function usePlantData() {
                 ...prev, 
                 lastWatered: new Date(waterEvents[0].timestamp as string) 
               }));
+              console.log('Last watered time loaded:', new Date(waterEvents[0].timestamp as string));
             }
             
             if (fertEvents && fertEvents.length > 0) {
@@ -79,6 +83,7 @@ export function usePlantData() {
                 ...prev, 
                 lastFertilized: new Date(fertEvents[0].timestamp as string) 
               }));
+              console.log('Last fertilized time loaded:', new Date(fertEvents[0].timestamp as string));
             }
           }
 
@@ -112,67 +117,102 @@ export function usePlantData() {
             
             // Add latest watering events if they aren't already in the history
             if (eventsResult && eventsResult.waterEvents?.length > 0) {
-              const latestWaterEvent = eventsResult.waterEvents[0];
-              const latestWaterTime = new Date(latestWaterEvent.timestamp as string);
-              
-              // Check if the latest water event is already in the history data
-              const waterEventExists = historyData.some(point => 
-                point.waterMotor && 
-                Math.abs(point.timestamp.getTime() - latestWaterTime.getTime()) < 5 * 60 * 1000
-              );
-              
-              // If not, add it
-              if (!waterEventExists) {
-                historyData.push({
-                  timestamp: latestWaterTime,
-                  moisture: historyData.length > 0 ? historyData[historyData.length - 1].moisture : 0,
-                  waterMotor: true,
-                  fertilizerMotor: false
-                });
-              }
+              eventsResult.waterEvents.forEach(waterEvent => {
+                const waterTime = new Date(waterEvent.timestamp as string);
+                
+                // Check if this water event is already represented in the history data
+                const waterEventExists = historyData.some(point => 
+                  point.waterMotor && 
+                  Math.abs(point.timestamp.getTime() - waterTime.getTime()) < 5 * 60 * 1000
+                );
+                
+                // If not, add it
+                if (!waterEventExists) {
+                  // Find the closest moisture reading to this event
+                  let closestReadingValue = historyData.length > 0 ? historyData[0].moisture : 50;
+                  if (historyData.length > 0) {
+                    const sortedData = [...historyData].sort((a, b) => 
+                      Math.abs(a.timestamp.getTime() - waterTime.getTime()) - 
+                      Math.abs(b.timestamp.getTime() - waterTime.getTime())
+                    );
+                    closestReadingValue = sortedData[0].moisture;
+                  }
+                  
+                  historyData.push({
+                    timestamp: waterTime,
+                    moisture: closestReadingValue,
+                    waterMotor: true,
+                    fertilizerMotor: false
+                  });
+                }
+              });
             }
             
             // Add latest fertilizer events if they aren't already in the history
             if (eventsResult && eventsResult.fertEvents?.length > 0) {
-              const latestFertEvent = eventsResult.fertEvents[0];
-              const latestFertTime = new Date(latestFertEvent.timestamp as string);
-              
-              // Check if the latest fertilizer event is already in the history data
-              const fertEventExists = historyData.some(point => 
-                point.fertilizerMotor && 
-                Math.abs(point.timestamp.getTime() - latestFertTime.getTime()) < 5 * 60 * 1000
-              );
-              
-              // If not, add it
-              if (!fertEventExists) {
-                historyData.push({
-                  timestamp: latestFertTime,
-                  moisture: historyData.length > 0 ? historyData[historyData.length - 1].moisture : 0,
-                  waterMotor: false,
-                  fertilizerMotor: true
-                });
-              }
+              eventsResult.fertEvents.forEach(fertEvent => {
+                const fertTime = new Date(fertEvent.timestamp as string);
+                
+                // Check if this fertilizer event is already represented in the history data
+                const fertEventExists = historyData.some(point => 
+                  point.fertilizerMotor && 
+                  Math.abs(point.timestamp.getTime() - fertTime.getTime()) < 5 * 60 * 1000
+                );
+                
+                // If not, add it
+                if (!fertEventExists) {
+                  // Find the closest moisture reading to this event
+                  let closestReadingValue = historyData.length > 0 ? historyData[0].moisture : 50;
+                  if (historyData.length > 0) {
+                    const sortedData = [...historyData].sort((a, b) => 
+                      Math.abs(a.timestamp.getTime() - fertTime.getTime()) - 
+                      Math.abs(b.timestamp.getTime() - fertTime.getTime())
+                    );
+                    closestReadingValue = sortedData[0].moisture;
+                  }
+                  
+                  historyData.push({
+                    timestamp: fertTime,
+                    moisture: closestReadingValue,
+                    waterMotor: false,
+                    fertilizerMotor: true
+                  });
+                }
+              });
             }
             
             // Sort the historyData by timestamp to ensure chronological order
             historyData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
             
-            setData(prev => ({
-              ...prev,
-              historyData,
-              currentMoisture: historyData.length > 0 ? historyData[historyData.length - 1].moisture : prev.currentMoisture
-            }));
+            // If we have actual historical data, use it
+            if (historyData.length > 0) {
+              setData(prev => ({
+                ...prev,
+                historyData,
+                // Use the most recent moisture level
+                currentMoisture: historyData[historyData.length - 1].moisture
+              }));
+              
+              // Turn off simulation if we have real data
+              if (historyData.length > 5) {
+                setUseSimulation(false);
+                console.log('Using real data, simulation disabled');
+              }
+            }
           }
         }
+        
+        setInitialLoadComplete(true);
       } catch (err) {
         console.error('Failed to load initial plant data:', err);
+        setInitialLoadComplete(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadInitialPlantData();
-  }, []);
+  }, [setUseSimulation]);
 
   // Check if moisture is critically low (for alerts)
   const isMoistureCritical = data.currentMoisture < data.optimalRange[0] * 0.8;
@@ -192,6 +232,7 @@ export function usePlantData() {
     setUseSimulation,
     useSimulation,
     isMoistureCritical,
-    isLoading
+    isLoading,
+    initialLoadComplete
   };
 }

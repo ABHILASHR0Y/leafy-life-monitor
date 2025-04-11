@@ -24,7 +24,7 @@ export const useChartData = (
   // Format data for the chart
   const chartData = useMemo(() => {
     // If no data or not connected to Arduino, create simulated offline data
-    if (!isArduinoConnected || data.length === 0) {
+    if ((!isArduinoConnected && data.length === 0) || data.length === 0) {
       // Generate flat line data points for offline visualization
       const offlineData = [];
       const now = new Date();
@@ -58,11 +58,21 @@ export const useChartData = (
   
   // Get today's data only
   const todayData = useMemo(() => {
+    if (chartData.length === 0) return [];
+    
     const today = new Date().setHours(0, 0, 0, 0);
-    return chartData.filter(point => {
-      const pointDate = new Date(point.fullTime).setHours(0, 0, 0, 0);
-      return pointDate === today;
+    const filtered = chartData.filter(point => {
+      try {
+        const pointDate = new Date(point.fullTime).setHours(0, 0, 0, 0);
+        return pointDate === today;
+      } catch (err) {
+        console.error('Date parsing error in chart filter:', err);
+        return false;
+      }
     });
+    
+    // If no data for today, return the full dataset
+    return filtered.length > 0 ? filtered : chartData;
   }, [chartData]);
 
   return {

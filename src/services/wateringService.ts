@@ -3,7 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Save watering or fertilizer event to database
 export const saveWateringEvent = async (plantId: string, eventType: 'water' | 'fertilizer', duration: number) => {
-  if (!plantId) return;
+  if (!plantId) {
+    console.error('Cannot save watering event: No plant ID provided');
+    return;
+  }
   
   try {
     const { error } = await supabase
@@ -16,6 +19,8 @@ export const saveWateringEvent = async (plantId: string, eventType: 'water' | 'f
       
     if (error) {
       console.error(`Error saving ${eventType} event:`, error);
+    } else {
+      console.log(`Successfully saved ${eventType} event for plant ${plantId}`);
     }
   } catch (err) {
     console.error(`Failed to save ${eventType} event:`, err);
@@ -24,6 +29,11 @@ export const saveWateringEvent = async (plantId: string, eventType: 'water' | 'f
 
 // Load watering events from database
 export const loadWateringEvents = async (plantId: string) => {
+  if (!plantId) {
+    console.error('Cannot load watering events: No plant ID provided');
+    return { waterEvents: [], fertEvents: [] };
+  }
+  
   try {
     // Get most recent water event
     const { data: waterEvents, error: waterError } = await supabase
@@ -32,7 +42,7 @@ export const loadWateringEvents = async (plantId: string) => {
       .eq('plant_id', plantId)
       .eq('event_type', 'water')
       .order('timestamp', { ascending: false })
-      .limit(1);
+      .limit(10); // Increased limit to get more history
 
     if (waterError) {
       console.error('Error loading water events:', waterError);
@@ -45,15 +55,18 @@ export const loadWateringEvents = async (plantId: string) => {
       .eq('plant_id', plantId)
       .eq('event_type', 'fertilizer')
       .order('timestamp', { ascending: false })
-      .limit(1);
+      .limit(10); // Increased limit to get more history
 
     if (fertError) {
       console.error('Error loading fertilizer events:', fertError);
     }
 
-    return { waterEvents, fertEvents };
+    return { 
+      waterEvents: waterEvents || [], 
+      fertEvents: fertEvents || [] 
+    };
   } catch (err) {
     console.error('Failed to load watering events:', err);
-    return { waterEvents: null, fertEvents: null };
+    return { waterEvents: [], fertEvents: [] };
   }
 };

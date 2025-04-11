@@ -13,6 +13,20 @@ const MoistureLineChart: React.FC<MoistureLineChartProps> = ({
   data, 
   isArduinoConnected
 }) => {
+  // Show empty state message if no data
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-[300px] flex items-center justify-center flex-col">
+        <p className="text-muted-foreground">No moisture data available</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          {isArduinoConnected
+            ? "Waiting for sensor readings..."
+            : "Connect your Arduino to receive data"}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[300px]">
       <ResponsiveContainer width="100%" height="100%">

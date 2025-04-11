@@ -1,4 +1,3 @@
-
 import { useCallback, useState, useEffect } from 'react';
 import { usePlantData } from './usePlantData';
 import { useArduinoSerial } from './useArduinoSerial';
@@ -9,6 +8,7 @@ export function useDashboard() {
   const { isConnected } = useArduinoSerial();
   const { toast } = useToast();
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+  const [pingInterval, setPingInterval] = useState<number | null>(null);
   
   const { 
     data, 
@@ -25,24 +25,57 @@ export function useDashboard() {
     updateFromArduino,
     setUseSimulation,
     useSimulation,
-    isLoading
+    isLoading,
+    initialLoadComplete
   } = usePlantData();
   
   // Update plant data hook when Arduino connection changes
   useEffect(() => {
-    // If not using simulation and not connected, we use simulation data
+    // If Arduino is disconnected but simulation is off, enable simulation
     if (!useSimulation && !isConnected) {
-      // This is handled in the MoistureGauge component now
+      console.log('Arduino disconnected, enabling simulation mode');
+      setUseSimulation(true);
     }
   }, [isConnected, setUseSimulation, useSimulation]);
+  
+  // Setup ping interval to keep connection alive when connected
+  useEffect(() => {
+    // Clear existing ping interval
+    if (pingInterval) {
+      clearInterval(pingInterval);
+      setPingInterval(null);
+    }
+    
+    // If connected, set up new ping interval
+    if (isConnected) {
+      const intervalId = window.setInterval(() => {
+        console.log('Sending ping to Arduino');
+        handleSendCommand('ping');
+      }, 5000); // Ping every 5 seconds
+      
+      setPingInterval(intervalId);
+    }
+    
+    return () => {
+      if (pingInterval) {
+        clearInterval(pingInterval);
+      }
+    };
+  }, [isConnected]);
   
   // Handle real data from Arduino
   const handleArduinoData = useCallback((arduinoData: any) => {
     if (arduinoData && isConnected) {
       updateFromArduino(arduinoData);
       setLastSyncTime(new Date());
+      
+      // If we get real data, we can turn off simulation mode
+      if (useSimulation && 'moisture' in arduinoData) {
+        console.log('Received real data from Arduino, disabling simulation');
+        setUseSimulation(false);
+      }
     }
-  }, [updateFromArduino, isConnected]);
+  }, [updateFromArduino, isConnected, useSimulation, setUseSimulation]);
 
   // Forward commands to Arduino via hook
   const handleSendCommand = useCallback(async (command: string): Promise<boolean> => {
@@ -61,8 +94,19 @@ export function useDashboard() {
         description: "Now receiving real sensor data"
       });
       setLastSyncTime(new Date());
+      
+      // If we connect, immediately get the current status
+      handleSendCommand('status');
+    } else {
+      toast({
+        title: "Arduino Disconnected",
+        description: "Switched to simulation mode"
+      });
+      
+      // Enable simulation when disconnected
+      setUseSimulation(true);
     }
-  }, [toast]);
+  }, [toast, handleSendCommand, setUseSimulation]);
 
   // Handle plant profile selection
   const handleSelectPlant = useCallback((plant: PlantProfile) => {
@@ -92,13 +136,13 @@ export function useDashboard() {
   
   // Force a data refresh on component mount
   useEffect(() => {
-    if (data.selectedPlantId) {
+    if (data.selectedPlantId && initialLoadComplete) {
       handleRefreshData();
     }
-  }, []);
+  }, [initialLoadComplete]);
   
   // Determine if we should show components that require Arduino connection
-  // When simulation is enabled, show everything regardless of actual connection
+  // When simulation is enabled, we show everything regardless of actual connection
   const showArduinoComponents = isConnected || useSimulation;
   
   return {

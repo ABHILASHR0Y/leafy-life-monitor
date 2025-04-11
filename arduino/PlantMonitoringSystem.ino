@@ -1,4 +1,3 @@
-
 /*
  * Plant Monitoring System - Arduino Code
  * Compatible with Leafy Life Monitor Dashboard
@@ -25,6 +24,9 @@ unsigned long waterMotorStartTime = 0;
 unsigned long fertilizerMotorStartTime = 0;
 unsigned long waterDuration = 10000;  // Default 10 seconds (in milliseconds)
 unsigned long fertilizerDuration = 10000;  // Default 10 seconds (in milliseconds)
+unsigned long lastStatusTime = 0;     // Last time status was sent
+unsigned long lastPingTime = 0;       // Last time a ping was received
+unsigned long connectionTimeout = 10000; // 10 second timeout for connection
 
 // System settings
 bool automaticMode = false;
@@ -34,6 +36,7 @@ int optimalMoistureMax = 80;
 // Communication
 String inputString = "";
 bool stringComplete = false;
+bool isConnected = false;
 
 void setup() {
   // Initialize serial communication
@@ -52,6 +55,7 @@ void setup() {
   
   // Send initial status after boot
   sendStatus();
+  Serial.println("Arduino ready");
 }
 
 void loop() {
@@ -69,11 +73,20 @@ void loop() {
   // Process any incoming serial commands
   processSerialCommands();
   
-  // Send status update every 2 seconds
-  static unsigned long lastUpdate = 0;
-  if (millis() - lastUpdate > 2000) {
-    sendStatus();
-    lastUpdate = millis();
+  // Check connection status - if no ping received within timeout period, consider disconnected
+  if (isConnected && (millis() - lastPingTime > connectionTimeout)) {
+    isConnected = false;
+    Serial.println("disconnected:timeout");
+  }
+  
+  // Send status update every 2 seconds if connected, or send "alive" ping if not
+  if (millis() - lastStatusTime > 2000) {
+    if (isConnected) {
+      sendStatus();
+    } else {
+      Serial.println("alive");
+    }
+    lastStatusTime = millis();
   }
   
   // Small delay to prevent excessive readings
@@ -133,7 +146,18 @@ void processSerialCommands() {
   if (stringComplete) {
     inputString.trim();
     
-    if (inputString.startsWith("water:on")) {
+    // Update connection status and last ping time
+    lastPingTime = millis();
+    if (!isConnected) {
+      isConnected = true;
+      Serial.println("connected");
+    }
+    
+    if (inputString.startsWith("ping")) {
+      // Just a ping to keep connection alive
+      Serial.println("pong");
+    }
+    else if (inputString.startsWith("water:on")) {
       // Extract duration if provided
       int colonIndex = inputString.indexOf(':', 6);
       if (colonIndex > 0) {
@@ -199,7 +223,11 @@ void sendStatus() {
   Serial.print(waterDuration / 1000);
   Serial.print(",\"fertilizer_duration\":");
   Serial.print(fertilizerDuration / 1000);
+  Serial.print(",\"connected\":");
+  Serial.print(isConnected ? "true" : "false");
   Serial.println("}");
+  
+  lastStatusTime = millis(); // Update last status time
 }
 
 // SerialEvent occurs whenever new data comes in the hardware serial RX

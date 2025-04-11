@@ -14,6 +14,8 @@ export function useArduinoSerial() {
   const [isConnected, setIsConnected] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now());
+  const [connectionTimeout, setConnectionTimeout] = useState<number | null>(null);
 
   // Function to connect to the Arduino
   const connect = useCallback(async () => {
@@ -34,6 +36,7 @@ export function useArduinoSerial() {
       setPort(newPort);
       setIsConnected(true);
       setConnectionError(null);
+      setLastActivityTime(Date.now());
 
       // Set up the writer
       const outputStream = newPort.writable;
@@ -44,6 +47,18 @@ export function useArduinoSerial() {
         title: 'Connected',
         description: 'Successfully connected to Arduino device.',
       });
+      
+      // Start connection timeout check
+      if (connectionTimeout) clearInterval(connectionTimeout);
+      const timeoutId = window.setInterval(() => {
+        const inactiveTime = Date.now() - lastActivityTime;
+        // If no activity for 10 seconds, consider disconnected
+        if (inactiveTime > 10000 && isConnected) {
+          console.log('Connection timeout - no activity detected');
+          disconnect();
+        }
+      }, 5000);
+      setConnectionTimeout(timeoutId);
       
       return true;
     } catch (error) {
@@ -59,11 +74,17 @@ export function useArduinoSerial() {
       
       return false;
     }
-  }, []);
+  }, [isConnected, lastActivityTime, connectionTimeout]);
 
   // Function to disconnect from the Arduino
   const disconnect = useCallback(async () => {
     try {
+      // Clear connection timeout
+      if (connectionTimeout) {
+        clearInterval(connectionTimeout);
+        setConnectionTimeout(null);
+      }
+      
       // Release the reader if it exists
       if (reader) {
         setIsReading(false);
@@ -104,7 +125,7 @@ export function useArduinoSerial() {
       
       return false;
     }
-  }, [port, reader, writer]);
+  }, [port, reader, writer, connectionTimeout]);
 
   // Function to send a command to the Arduino
   const sendCommand = useCallback(async (command: string) => {
@@ -114,6 +135,9 @@ export function useArduinoSerial() {
     }
 
     try {
+      // Update last activity time
+      setLastActivityTime(Date.now());
+      
       // Add newline as terminator for Arduino commands
       const encoder = new TextEncoder();
       const data = encoder.encode(command + '\n');
@@ -157,6 +181,9 @@ export function useArduinoSerial() {
               break;
             }
             
+            // Update last activity time when data is received
+            setLastActivityTime(Date.now());
+            
             // Convert the received bytes to text
             const decoder = new TextDecoder();
             const text = decoder.decode(value);
@@ -167,6 +194,11 @@ export function useArduinoSerial() {
         } catch (error) {
           console.error('Error reading from serial:', error);
           setIsReading(false);
+          
+          // If there's a read error, consider the connection lost
+          if (isConnected) {
+            disconnect();
+          }
         } finally {
           newReader.releaseLock();
         }
@@ -180,11 +212,15 @@ export function useArduinoSerial() {
       setIsReading(false);
       return false;
     }
-  }, [port, isConnected]);
+  }, [port, isConnected, disconnect, isReading]);
 
   // Clean up on unmount
   useEffect(() => {
     return () => {
+      if (connectionTimeout) {
+        clearInterval(connectionTimeout);
+      }
+      
       if (reader) {
         setIsReading(false);
         reader.cancel().catch(console.error);
@@ -196,7 +232,7 @@ export function useArduinoSerial() {
         port.close().catch(console.error);
       }
     };
-  }, [port, reader, writer]);
+  }, [port, reader, writer, connectionTimeout]);
 
   return {
     isConnected,

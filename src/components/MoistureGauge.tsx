@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Droplet, WifiOff, CircleDot, CircleX } from 'lucide-react';
+import { Droplet, WifiOff, CircleDot } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -78,8 +78,8 @@ const MoistureGauge: React.FC<MoistureGaugeProps> = ({
         </div>
       </div>
       
+      {/* Gauge background */}
       <div className="gauge-container">
-        {/* Gauge background */}
         <div className="absolute inset-0 h-full w-full bg-secondary rounded-full overflow-hidden" style={{ clipPath: 'polygon(0 50%, 100% 50%, 100% 100%, 0% 100%)' }}></div>
         
         {/* Gauge color sections */}
