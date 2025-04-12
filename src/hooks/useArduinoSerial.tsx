@@ -16,6 +16,7 @@ export function useArduinoSerial() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now());
   const [connectionTimeout, setConnectionTimeout] = useState<number | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   // Function to connect to the Arduino
   const connect = useCallback(async () => {
@@ -29,19 +30,32 @@ export function useArduinoSerial() {
       return false;
     }
 
+    if (isConnecting) {
+      console.log('Already attempting to connect, please wait...');
+      return false;
+    }
+
+    setIsConnecting(true);
+
     try {
+      // First close any existing connection
+      if (isConnected) {
+        await disconnect();
+      }
+
       const newPort = await navigator.serial.requestPort();
       await newPort.open({ baudRate: 9600 });
 
+      // Set up the writer before setting connected state
+      const outputStream = newPort.writable;
+      const newWriter = outputStream.getWriter();
+      
+      // Update states after successful connection
       setPort(newPort);
+      setWriter(newWriter);
       setIsConnected(true);
       setConnectionError(null);
       setLastActivityTime(Date.now());
-
-      // Set up the writer
-      const outputStream = newPort.writable;
-      const newWriter = outputStream.getWriter();
-      setWriter(newWriter);
 
       toast({
         title: 'Connected',
@@ -73,8 +87,10 @@ export function useArduinoSerial() {
       });
       
       return false;
+    } finally {
+      setIsConnecting(false);
     }
-  }, [isConnected, lastActivityTime, connectionTimeout]);
+  }, [isConnected, lastActivityTime, connectionTimeout, disconnect, isConnecting]);
 
   // Function to disconnect from the Arduino
   const disconnect = useCallback(async () => {
@@ -88,21 +104,33 @@ export function useArduinoSerial() {
       // Release the reader if it exists
       if (reader) {
         setIsReading(false);
-        await reader.cancel();
-        reader.releaseLock();
+        try {
+          await reader.cancel();
+          reader.releaseLock();
+        } catch (e) {
+          console.log('Error releasing reader:', e);
+        }
         setReader(null);
       }
 
       // Release the writer if it exists
       if (writer) {
-        await writer.close();
-        writer.releaseLock();
+        try {
+          await writer.close();
+          writer.releaseLock();
+        } catch (e) {
+          console.log('Error releasing writer:', e);
+        }
         setWriter(null);
       }
 
       // Close the port if it exists
       if (port) {
-        await port.close();
+        try {
+          await port.close();
+        } catch (e) {
+          console.log('Error closing port:', e);
+        }
         setPort(null);
       }
 
@@ -123,14 +151,27 @@ export function useArduinoSerial() {
         variant: 'destructive',
       });
       
+      // Force reset of all connection states in case of error
+      setReader(null);
+      setWriter(null);
+      setPort(null);
+      setIsConnected(false);
+      
       return false;
     }
   }, [port, reader, writer, connectionTimeout]);
 
   // Function to send a command to the Arduino
   const sendCommand = useCallback(async (command: string) => {
-    if (!writer || !isConnected) {
+    if (!writer) {
+      console.error('Cannot send command: Writer not available');
+      setConnectionError('Command failed: No writer available');
+      return false;
+    }
+
+    if (!isConnected) {
       console.error('Cannot send command: Not connected');
+      setConnectionError('Command failed: Not connected to Arduino');
       return false;
     }
 
@@ -149,15 +190,27 @@ export function useArduinoSerial() {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setConnectionError(`Failed to send command: ${errorMessage}`);
       
-      toast({
-        title: 'Command Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      // If we get a "closed" error, try to reconnect
+      if (errorMessage.includes('CLOSED')) {
+        console.log('Writer was closed, attempting disconnect to reset connection state');
+        await disconnect();
+        
+        toast({
+          title: 'Connection Lost',
+          description: 'Arduino connection was closed. Please reconnect.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Command Failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
       
       return false;
     }
-  }, [writer, isConnected]);
+  }, [writer, isConnected, disconnect]);
 
   // Start reading data from Arduino
   const startReading = useCallback(async (onDataReceived: (data: string) => void) => {
@@ -167,6 +220,16 @@ export function useArduinoSerial() {
     }
 
     try {
+      // Release previous reader if any
+      if (reader) {
+        try {
+          await reader.cancel();
+          reader.releaseLock();
+        } catch (e) {
+          console.log('Error releasing previous reader:', e);
+        }
+      }
+
       const inputStream = port.readable;
       const newReader = inputStream.getReader();
       setReader(newReader);
@@ -178,6 +241,7 @@ export function useArduinoSerial() {
           while (isReading) {
             const { value, done } = await newReader.read();
             if (done) {
+              console.log('Reader reported done');
               break;
             }
             
@@ -200,7 +264,11 @@ export function useArduinoSerial() {
             disconnect();
           }
         } finally {
-          newReader.releaseLock();
+          try {
+            newReader.releaseLock();
+          } catch (e) {
+            console.log('Error releasing reader in finally block:', e);
+          }
         }
       };
 
@@ -212,7 +280,7 @@ export function useArduinoSerial() {
       setIsReading(false);
       return false;
     }
-  }, [port, isConnected, disconnect, isReading]);
+  }, [port, isConnected, disconnect, reader, isReading]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -239,6 +307,7 @@ export function useArduinoSerial() {
     isReading,
     connectionError,
     serialAvailable: isSerialAvailable(),
+    isConnecting,
     connect,
     disconnect,
     sendCommand,

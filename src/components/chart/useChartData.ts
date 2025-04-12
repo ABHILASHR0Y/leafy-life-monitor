@@ -26,7 +26,7 @@ export const useChartData = (
     // If no data or not connected to Arduino, create simulated offline data
     if ((!isArduinoConnected && data.length === 0) || data.length === 0) {
       // Generate flat line data points for offline visualization
-      const offlineData = [];
+      const offlineData: ChartDataPoint[] = [];
       const now = new Date();
       for (let i = 12; i >= 0; i--) {
         const timestamp = new Date(now.getTime() - i * 30 * 60 * 1000); // 30-minute intervals
@@ -42,14 +42,29 @@ export const useChartData = (
       return offlineData;
     }
 
+    // Make a defensive copy and handle potential date issues
+    const processedData = data.map(point => {
+      // Ensure timestamp is a valid Date
+      const timestamp = point.timestamp instanceof Date ? 
+        point.timestamp : 
+        (typeof point.timestamp === 'string' ? new Date(point.timestamp) : new Date());
+      
+      return {
+        ...point,
+        timestamp
+      };
+    });
+
     // Regular data processing for online mode
     // Sort by timestamp to ensure chronological order
-    const sortedData = [...data].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    const sortedData = [...processedData].sort((a, b) => {
+      return a.timestamp.getTime() - b.timestamp.getTime();
+    });
     
     return sortedData.map(point => ({
       time: point.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       fullTime: point.timestamp.toLocaleString(),
-      moisture: point.moisture,
+      moisture: isNaN(point.moisture) ? 0 : point.moisture,
       waterMotor: point.waterMotor ? 1 : 0,
       fertilizerMotor: point.fertilizerMotor ? 1 : 0,
       offline: false
