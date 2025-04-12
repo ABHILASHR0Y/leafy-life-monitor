@@ -1,19 +1,16 @@
 
 import React, { useMemo } from 'react';
-import { Droplet, WifiOff, CircleDot } from 'lucide-react';
+import { Droplet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
 
 interface MoistureGaugeProps {
   currentMoisture: number;
   optimalRange: [number, number];
-  isArduinoConnected: boolean;
 }
 
 const MoistureGauge: React.FC<MoistureGaugeProps> = ({ 
   currentMoisture, 
-  optimalRange,
-  isArduinoConnected
+  optimalRange 
 }) => {
   const { toast } = useToast();
   
@@ -38,48 +35,27 @@ const MoistureGauge: React.FC<MoistureGaugeProps> = ({
 
   // Show toast when moisture is critically low
   React.useEffect(() => {
-    if (isArduinoConnected && currentMoisture < optimalRange[0] * 0.7) {
+    if (currentMoisture < optimalRange[0] * 0.7) {
       toast({
         title: 'Low Moisture Alert!',
         description: 'Your plant is very dry and needs water soon.',
         variant: 'destructive',
       });
     }
-  }, [currentMoisture, optimalRange, toast, isArduinoConnected]);
+  }, [currentMoisture, optimalRange, toast]);
 
   // Calculate angle for gauge needle (from -90 to 90 degrees)
   const needleAngle = -90 + (180 * gaugePosition / 100);
 
-  // If Arduino is disconnected, show a disconnected state
-  if (!isArduinoConnected) {
-    return (
-      <Card className="h-full flex flex-col">
-        <CardContent className="h-full flex flex-col items-center justify-center p-6">
-          <WifiOff className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Moisture Sensor Disconnected</h3>
-          <p className="text-sm text-muted-foreground text-center">
-            Connect your Arduino to view real-time soil moisture data.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="card-dashboard">
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-xl font-semibold flex items-center gap-2">
-          <Droplet className={`h-5 w-5 ${getMoistureColor}`} />
-          Soil Moisture
-        </h3>
-        <div className="flex items-center gap-1">
-          <CircleDot className="h-4 w-4 text-green-500" />
-          <span className="text-sm text-green-500 font-medium">Sensor Available</span>
-        </div>
-      </div>
+      <h3 className="text-xl font-semibold mb-3 flex items-center justify-center gap-2">
+        <Droplet className={`h-5 w-5 ${getMoistureColor}`} />
+        Soil Moisture
+      </h3>
       
-      {/* Gauge background */}
       <div className="gauge-container">
+        {/* Gauge background */}
         <div className="absolute inset-0 h-full w-full bg-secondary rounded-full overflow-hidden" style={{ clipPath: 'polygon(0 50%, 100% 50%, 100% 100%, 0% 100%)' }}></div>
         
         {/* Gauge color sections */}
