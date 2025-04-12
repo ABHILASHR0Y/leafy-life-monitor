@@ -28,78 +28,107 @@ const ArduinoConnection: React.FC<ArduinoConnectionProps> = ({
   
   const [lastCommandSuccess, setLastCommandSuccess] = useState<boolean | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [readingActive, setReadingActive] = useState<boolean>(false);
 
   // Initialize real Arduino communication
   useEffect(() => {
-    if (isConnected) {
-      startReading((data) => {
-        try {
-          // Try to parse JSON data from Arduino
-          if (data.trim().startsWith('{')) {
-            const jsonData = JSON.parse(data);
-            onDataReceived(jsonData);
-          } else {
-            // Handle non-JSON responses (status updates, etc)
-            console.log('Arduino says:', data);
-            
-            // Extract specific messages
-            if (data.includes('water_motor:on')) {
-              toast({
-                title: 'Water Motor',
-                description: 'Water motor activated',
-              });
-            } else if (data.includes('water_motor:off')) {
-              toast({
-                title: 'Water Motor',
-                description: 'Water motor deactivated',
-              });
-            } else if (data.includes('fertilizer_motor:on')) {
-              toast({
-                title: 'Fertilizer Motor',
-                description: 'Fertilizer motor activated',
-              });
-            } else if (data.includes('fertilizer_motor:off')) {
-              toast({
-                title: 'Fertilizer Motor',
-                description: 'Fertilizer motor deactivated',
-              });
+    if (isConnected && !readingActive) {
+      const setupReader = async () => {
+        const success = await startReading((data) => {
+          try {
+            // Try to parse JSON data from Arduino
+            if (data.trim().startsWith('{')) {
+              const jsonData = JSON.parse(data);
+              onDataReceived(jsonData);
+            } else {
+              // Handle non-JSON responses (status updates, etc)
+              console.log('Arduino says:', data);
+              
+              // Extract specific messages
+              if (data.includes('water_motor:on')) {
+                toast({
+                  title: 'Water Motor',
+                  description: 'Water motor activated',
+                });
+              } else if (data.includes('water_motor:off')) {
+                toast({
+                  title: 'Water Motor',
+                  description: 'Water motor deactivated',
+                });
+              } else if (data.includes('fertilizer_motor:on')) {
+                toast({
+                  title: 'Fertilizer Motor',
+                  description: 'Fertilizer motor activated',
+                });
+              } else if (data.includes('fertilizer_motor:off')) {
+                toast({
+                  title: 'Fertilizer Motor',
+                  description: 'Fertilizer motor deactivated',
+                });
+              }
             }
+          } catch (error) {
+            console.log('Received non-JSON data:', data);
           }
-        } catch (error) {
-          console.log('Received non-JSON data:', data);
+        });
+        
+        setReadingActive(success);
+        
+        // Send initial status request if reading started successfully
+        if (success) {
+          sendCommand('status').catch(console.error);
         }
-      });
+      };
       
-      // Send initial status request
-      sendCommand('status');
+      setupReader();
     }
-  }, [isConnected, startReading, sendCommand, onDataReceived]);
+    
+    if (!isConnected) {
+      setReadingActive(false);
+    }
+  }, [isConnected, startReading, sendCommand, onDataReceived, readingActive]);
 
   // Connect to Arduino
   const handleConnect = async () => {
     setLoading(true);
-    await connect();
-    setLoading(false);
+    try {
+      await connect();
+    } catch (error) {
+      console.error("Connection error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Disconnect from Arduino
   const handleDisconnect = async () => {
     setLoading(true);
-    await disconnect();
-    setLoading(false);
+    try {
+      await disconnect();
+    } catch (error) {
+      console.error("Disconnection error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Forward commands to Arduino
   const handleSendCommand = async (command: string) => {
     setLoading(true);
-    const success = await sendCommand(command);
-    setLastCommandSuccess(success);
-    setLoading(false);
-    
-    // Also call the parent's onSendCommand handler
-    onSendCommand(command);
-    
-    return success;
+    try {
+      const success = await sendCommand(command);
+      setLastCommandSuccess(success);
+      
+      // Also call the parent's onSendCommand handler
+      onSendCommand(command);
+      
+      return success;
+    } catch (error) {
+      console.error("Command error:", error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!serialAvailable) {

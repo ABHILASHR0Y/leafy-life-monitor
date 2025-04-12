@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from "@/hooks/use-toast";
 
 // Web Serial API is only available in secure contexts (HTTPS) and some browsers
@@ -14,6 +14,74 @@ export function useArduinoSerial() {
   const [isConnected, setIsConnected] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  
+  // Use refs to track the current state in async callbacks
+  const isConnectedRef = useRef(isConnected);
+  const isReadingRef = useRef(isReading);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    isConnectedRef.current = isConnected;
+    isReadingRef.current = isReading;
+  }, [isConnected, isReading]);
+
+  // Function to disconnect from the Arduino
+  const disconnect = useCallback(async () => {
+    try {
+      // Release the reader if it exists
+      if (reader) {
+        setIsReading(false);
+        isReadingRef.current = false;
+        try {
+          await reader.cancel();
+        } catch (err) {
+          console.log('Error cancelling reader:', err);
+        }
+        reader.releaseLock();
+        setReader(null);
+      }
+
+      // Release the writer if it exists
+      if (writer) {
+        try {
+          await writer.close();
+        } catch (err) {
+          console.log('Error closing writer:', err);
+        }
+        writer.releaseLock();
+        setWriter(null);
+      }
+
+      // Close the port if it exists
+      if (port) {
+        try {
+          await port.close();
+        } catch (err) {
+          console.log('Error closing port:', err);
+        }
+        setPort(null);
+      }
+
+      setIsConnected(false);
+      toast({
+        title: 'Disconnected',
+        description: 'Disconnected from Arduino device.',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setConnectionError(`Failed to disconnect: ${errorMessage}`);
+      
+      toast({
+        title: 'Disconnect Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      
+      return false;
+    }
+  }, [port, reader, writer]);
 
   // Function to connect to the Arduino
   const connect = useCallback(async () => {
@@ -27,12 +95,18 @@ export function useArduinoSerial() {
       return false;
     }
 
+    // If already connected, disconnect first
+    if (isConnected) {
+      await disconnect();
+    }
+
     try {
       const newPort = await navigator.serial.requestPort();
       await newPort.open({ baudRate: 9600 });
 
       setPort(newPort);
       setIsConnected(true);
+      isConnectedRef.current = true;
       setConnectionError(null);
 
       // Set up the writer
@@ -59,56 +133,11 @@ export function useArduinoSerial() {
       
       return false;
     }
-  }, []);
-
-  // Function to disconnect from the Arduino
-  const disconnect = useCallback(async () => {
-    try {
-      // Release the reader if it exists
-      if (reader) {
-        setIsReading(false);
-        await reader.cancel();
-        reader.releaseLock();
-        setReader(null);
-      }
-
-      // Release the writer if it exists
-      if (writer) {
-        await writer.close();
-        writer.releaseLock();
-        setWriter(null);
-      }
-
-      // Close the port if it exists
-      if (port) {
-        await port.close();
-        setPort(null);
-      }
-
-      setIsConnected(false);
-      toast({
-        title: 'Disconnected',
-        description: 'Disconnected from Arduino device.',
-      });
-      return true;
-    } catch (error) {
-      console.error('Error disconnecting:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setConnectionError(`Failed to disconnect: ${errorMessage}`);
-      
-      toast({
-        title: 'Disconnect Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-      
-      return false;
-    }
-  }, [port, reader, writer]);
+  }, [isConnected, disconnect]);
 
   // Function to send a command to the Arduino
   const sendCommand = useCallback(async (command: string) => {
-    if (!writer || !isConnected) {
+    if (!writer || !isConnectedRef.current) {
       console.error('Cannot send command: Not connected');
       return false;
     }
@@ -133,11 +162,11 @@ export function useArduinoSerial() {
       
       return false;
     }
-  }, [writer, isConnected]);
+  }, [writer]);
 
   // Start reading data from Arduino
   const startReading = useCallback(async (onDataReceived: (data: string) => void) => {
-    if (!port || !isConnected) {
+    if (!port || !isConnectedRef.current) {
       console.error('Cannot start reading: Not connected');
       return false;
     }
@@ -147,11 +176,12 @@ export function useArduinoSerial() {
       const newReader = inputStream.getReader();
       setReader(newReader);
       setIsReading(true);
+      isReadingRef.current = true;
 
       // Read loop
       const readLoop = async () => {
         try {
-          while (isReading) {
+          while (isReadingRef.current) {
             const { value, done } = await newReader.read();
             if (done) {
               break;
@@ -167,8 +197,13 @@ export function useArduinoSerial() {
         } catch (error) {
           console.error('Error reading from serial:', error);
           setIsReading(false);
+          isReadingRef.current = false;
         } finally {
-          newReader.releaseLock();
+          try {
+            newReader.releaseLock();
+          } catch (e) {
+            console.log('Error releasing reader lock:', e);
+          }
         }
       };
 
@@ -178,15 +213,17 @@ export function useArduinoSerial() {
     } catch (error) {
       console.error('Error setting up reader:', error);
       setIsReading(false);
+      isReadingRef.current = false;
       return false;
     }
-  }, [port, isConnected]);
+  }, [port]);
 
   // Clean up on unmount
   useEffect(() => {
     return () => {
       if (reader) {
         setIsReading(false);
+        isReadingRef.current = false;
         reader.cancel().catch(console.error);
       }
       if (writer) {
