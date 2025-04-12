@@ -18,7 +18,7 @@ export function useArduinoSerial() {
   const [connectionTimeout, setConnectionTimeout] = useState<number | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Function to disconnect from the Arduino
+  // Function to disconnect from the Arduino - defined first to avoid dependency issues
   const disconnect = useCallback(async () => {
     try {
       // Clear connection timeout
@@ -87,7 +87,7 @@ export function useArduinoSerial() {
     }
   }, [port, reader, writer, connectionTimeout]);
 
-  // Function to connect to the Arduino
+  // Now define connect function with properly ordered dependencies
   const connect = useCallback(async () => {
     if (!isSerialAvailable()) {
       setConnectionError('Web Serial API is not supported in this browser.');
@@ -159,7 +159,7 @@ export function useArduinoSerial() {
     } finally {
       setIsConnecting(false);
     }
-  }, [isConnected, lastActivityTime, connectionTimeout, disconnect]);
+  }, [isConnected, lastActivityTime, disconnect, isConnecting]);
 
   // Function to send a command to the Arduino
   const sendCommand = useCallback(async (command: string) => {
@@ -182,6 +182,12 @@ export function useArduinoSerial() {
       // Add newline as terminator for Arduino commands
       const encoder = new TextEncoder();
       const data = encoder.encode(command + '\n');
+      
+      // Check if the writer is still valid before writing
+      if (writer.closed) {
+        throw new Error('Writer is closed');
+      }
+      
       await writer.write(data);
       console.log(`Sent command to Arduino: ${command}`);
       return true;
@@ -191,7 +197,7 @@ export function useArduinoSerial() {
       setConnectionError(`Failed to send command: ${errorMessage}`);
       
       // If we get a "closed" error, try to reconnect
-      if (errorMessage.includes('CLOSED')) {
+      if (errorMessage.includes('closed') || errorMessage.includes('CLOSED')) {
         console.log('Writer was closed, attempting disconnect to reset connection state');
         await disconnect();
         
@@ -231,6 +237,10 @@ export function useArduinoSerial() {
       }
 
       const inputStream = port.readable;
+      if (!inputStream) {
+        throw new Error('Serial port readable stream is null');
+      }
+      
       const newReader = inputStream.getReader();
       setReader(newReader);
       setIsReading(true);
