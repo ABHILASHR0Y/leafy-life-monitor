@@ -18,6 +18,75 @@ export function useArduinoSerial() {
   const [connectionTimeout, setConnectionTimeout] = useState<number | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
+  // Function to disconnect from the Arduino
+  const disconnect = useCallback(async () => {
+    try {
+      // Clear connection timeout
+      if (connectionTimeout) {
+        clearInterval(connectionTimeout);
+        setConnectionTimeout(null);
+      }
+      
+      // Release the reader if it exists
+      if (reader) {
+        setIsReading(false);
+        try {
+          await reader.cancel();
+          reader.releaseLock();
+        } catch (e) {
+          console.log('Error releasing reader:', e);
+        }
+        setReader(null);
+      }
+
+      // Release the writer if it exists
+      if (writer) {
+        try {
+          await writer.close();
+          writer.releaseLock();
+        } catch (e) {
+          console.log('Error releasing writer:', e);
+        }
+        setWriter(null);
+      }
+
+      // Close the port if it exists
+      if (port) {
+        try {
+          await port.close();
+        } catch (e) {
+          console.log('Error closing port:', e);
+        }
+        setPort(null);
+      }
+
+      setIsConnected(false);
+      toast({
+        title: 'Disconnected',
+        description: 'Disconnected from Arduino device.',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setConnectionError(`Failed to disconnect: ${errorMessage}`);
+      
+      toast({
+        title: 'Disconnect Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      
+      // Force reset of all connection states in case of error
+      setReader(null);
+      setWriter(null);
+      setPort(null);
+      setIsConnected(false);
+      
+      return false;
+    }
+  }, [port, reader, writer, connectionTimeout]);
+
   // Function to connect to the Arduino
   const connect = useCallback(async () => {
     if (!isSerialAvailable()) {
@@ -90,76 +159,7 @@ export function useArduinoSerial() {
     } finally {
       setIsConnecting(false);
     }
-  }, [isConnected, lastActivityTime, connectionTimeout, disconnect, isConnecting]);
-
-  // Function to disconnect from the Arduino
-  const disconnect = useCallback(async () => {
-    try {
-      // Clear connection timeout
-      if (connectionTimeout) {
-        clearInterval(connectionTimeout);
-        setConnectionTimeout(null);
-      }
-      
-      // Release the reader if it exists
-      if (reader) {
-        setIsReading(false);
-        try {
-          await reader.cancel();
-          reader.releaseLock();
-        } catch (e) {
-          console.log('Error releasing reader:', e);
-        }
-        setReader(null);
-      }
-
-      // Release the writer if it exists
-      if (writer) {
-        try {
-          await writer.close();
-          writer.releaseLock();
-        } catch (e) {
-          console.log('Error releasing writer:', e);
-        }
-        setWriter(null);
-      }
-
-      // Close the port if it exists
-      if (port) {
-        try {
-          await port.close();
-        } catch (e) {
-          console.log('Error closing port:', e);
-        }
-        setPort(null);
-      }
-
-      setIsConnected(false);
-      toast({
-        title: 'Disconnected',
-        description: 'Disconnected from Arduino device.',
-      });
-      return true;
-    } catch (error) {
-      console.error('Error disconnecting:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setConnectionError(`Failed to disconnect: ${errorMessage}`);
-      
-      toast({
-        title: 'Disconnect Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-      
-      // Force reset of all connection states in case of error
-      setReader(null);
-      setWriter(null);
-      setPort(null);
-      setIsConnected(false);
-      
-      return false;
-    }
-  }, [port, reader, writer, connectionTimeout]);
+  }, [isConnected, lastActivityTime, connectionTimeout, disconnect]);
 
   // Function to send a command to the Arduino
   const sendCommand = useCallback(async (command: string) => {
