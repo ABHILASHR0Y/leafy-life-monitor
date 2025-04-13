@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState, useEffect } from 'react';
 
 export type MotorStatus = 'idle' | 'active' | 'error';
 export type WateringMode = 'automatic' | 'manual';
-export type WateringFrequency = 'daily' | 'twice_weekly' | 'weekly' | 'biweekly' | 'custom';
 
 export interface PlantData {
   currentMoisture: number;
@@ -14,9 +14,6 @@ export interface PlantData {
   wateringMode: WateringMode;
   wateringDuration: number; // in seconds
   fertilizerDuration: number; // in seconds
-  wateringFrequency: WateringFrequency;
-  customWateringDays: number; // days between waterings if custom frequency
-  nextScheduledWatering: Date | null;
   historyData: Array<{
     timestamp: Date;
     moisture: number;
@@ -25,8 +22,7 @@ export interface PlantData {
   }>;
 }
 
-// This hook simulates data that would come from an Arduino
-// but can also be updated with real data from the Arduino
+// This is a mock hook that simulates data that would come from an Arduino
 export function usePlantData() {
   const [data, setData] = useState<PlantData>({
     currentMoisture: 65,
@@ -38,81 +34,11 @@ export function usePlantData() {
     wateringMode: 'manual', // Default to manual mode
     wateringDuration: 10, // Default 10 seconds
     fertilizerDuration: 10, // Default 10 seconds
-    wateringFrequency: 'twice_weekly', // Default to twice weekly
-    customWateringDays: 3, // Default to 3 days for custom frequency
-    nextScheduledWatering: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
     historyData: []
   });
 
-  const [useSimulation, setUseSimulation] = useState(true);
-
-  // Function to update data from Arduino readings
-  const updateFromArduino = useCallback((arduinoData: any) => {
-    setUseSimulation(false); // Switch to real data mode
-    
-    setData(prev => {
-      // Create a copy to avoid mutation
-      const newData = { ...prev };
-      
-      // Update the moisture level if provided
-      if ('moisture' in arduinoData) {
-        newData.currentMoisture = arduinoData.moisture;
-      }
-      
-      // Update water motor status if provided
-      if ('water_motor' in arduinoData) {
-        newData.waterMotorStatus = arduinoData.water_motor ? 'active' : 'idle';
-        
-        // If motor just turned off, update last watered time
-        if (!arduinoData.water_motor && prev.waterMotorStatus === 'active') {
-          newData.lastWatered = new Date();
-        }
-      }
-      
-      // Update fertilizer motor status if provided
-      if ('fertilizer_motor' in arduinoData) {
-        newData.fertilizerMotorStatus = arduinoData.fertilizer_motor ? 'active' : 'idle';
-        
-        // If motor just turned off, update last fertilized time
-        if (!arduinoData.fertilizer_motor && prev.fertilizerMotorStatus === 'active') {
-          newData.lastFertilized = new Date();
-        }
-      }
-      
-      // Update watering mode if provided
-      if ('mode' in arduinoData) {
-        newData.wateringMode = arduinoData.mode as WateringMode;
-      }
-      
-      // Update durations if provided
-      if ('water_duration' in arduinoData) {
-        newData.wateringDuration = arduinoData.water_duration;
-      }
-      
-      if ('fertilizer_duration' in arduinoData) {
-        newData.fertilizerDuration = arduinoData.fertilizer_duration;
-      }
-      
-      // Add a data point to history
-      const now = new Date();
-      newData.historyData = [
-        ...prev.historyData,
-        {
-          timestamp: now,
-          moisture: newData.currentMoisture,
-          waterMotor: newData.waterMotorStatus === 'active',
-          fertilizerMotor: newData.fertilizerMotorStatus === 'active'
-        }
-      ].slice(-25); // Keep only the last 25 data points
-      
-      return newData;
-    });
-  }, []);
-
   // Generate mock historical data
   useEffect(() => {
-    if (!useSimulation) return; // Skip simulation if using real data
-    
     const now = new Date();
     const history = [];
     
@@ -139,12 +65,10 @@ export function usePlantData() {
     }
     
     setData(prev => ({ ...prev, historyData: history }));
-  }, [useSimulation]);
+  }, []);
 
   // Simulate real-time moisture fluctuations
   useEffect(() => {
-    if (!useSimulation) return; // Skip simulation if using real data
-    
     const interval = setInterval(() => {
       setData(prev => {
         // Simulate moisture decreasing over time, with some randomness
@@ -167,12 +91,10 @@ export function usePlantData() {
     }, 2000);
     
     return () => clearInterval(interval);
-  }, [useSimulation]);
+  }, []);
 
   // Simulate motor activations
   useEffect(() => {
-    if (!useSimulation) return; // Skip simulation if using real data
-    
     // If water motor is active, run for specified duration then turn off
     if (data.waterMotorStatus === 'active') {
       const timer = setTimeout(() => {
@@ -199,138 +121,47 @@ export function usePlantData() {
       
       return () => clearTimeout(timer);
     }
-  }, [data.waterMotorStatus, data.fertilizerMotorStatus, data.wateringDuration, data.fertilizerDuration, useSimulation]);
-
-  // Check if it's time to water based on frequency and moisture level
-  useEffect(() => {
-    if (!useSimulation || data.wateringMode !== 'automatic') return;
-    
-    const now = new Date();
-    
-    // Check if it's time to water based on schedule AND if moisture is below threshold
-    if (data.nextScheduledWatering && 
-        now >= data.nextScheduledWatering && 
-        data.currentMoisture < data.optimalRange[0] && 
-        data.waterMotorStatus === 'idle') {
-      
-      // Activate water motor
-      setData(prev => ({
-        ...prev,
-        waterMotorStatus: 'active'
-      }));
-    }
-  }, [data.currentMoisture, data.nextScheduledWatering, data.optimalRange, data.waterMotorStatus, data.wateringMode, useSimulation]);
+  }, [data.waterMotorStatus, data.fertilizerMotorStatus, data.wateringDuration, data.fertilizerDuration]);
 
   // Function to manually activate water motor
-  const activateWaterMotor = useCallback(() => {
+  const activateWaterMotor = () => {
     setData(prev => ({
       ...prev,
       waterMotorStatus: 'active'
     }));
-  }, []);
+  };
 
   // Function to manually activate fertilizer motor
-  const activateFertilizerMotor = useCallback(() => {
+  const activateFertilizerMotor = () => {
     setData(prev => ({
       ...prev,
       fertilizerMotorStatus: 'active'
     }));
-  }, []);
+  };
 
   // Function to toggle watering mode
-  const toggleWateringMode = useCallback(() => {
+  const toggleWateringMode = () => {
     setData(prev => ({
       ...prev,
       wateringMode: prev.wateringMode === 'automatic' ? 'manual' : 'automatic'
     }));
-  }, []);
+  };
 
   // Function to update watering duration
-  const setWateringDuration = useCallback((duration: number) => {
+  const setWateringDuration = (duration: number) => {
     setData(prev => ({
       ...prev,
       wateringDuration: duration
     }));
-  }, []);
+  };
 
   // Function to update fertilizer duration
-  const setFertilizerDuration = useCallback((duration: number) => {
+  const setFertilizerDuration = (duration: number) => {
     setData(prev => ({
       ...prev,
       fertilizerDuration: duration
     }));
-  }, []);
-
-  // Function to update watering frequency and next scheduled time
-  const setWateringFrequency = useCallback((frequency: WateringFrequency) => {
-    setData(prev => {
-      // Calculate next watering date based on frequency
-      const now = new Date();
-      let nextDate: Date;
-      
-      switch (frequency) {
-        case 'daily':
-          nextDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Tomorrow
-          break;
-        case 'twice_weekly':
-          nextDate = new Date(now.getTime() + 3.5 * 24 * 60 * 60 * 1000); // 3.5 days
-          break;
-        case 'weekly':
-          nextDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
-          break;
-        case 'biweekly':
-          nextDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days
-          break;
-        case 'custom':
-          nextDate = new Date(now.getTime() + prev.customWateringDays * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          nextDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // Default to 3 days
-      }
-      
-      return {
-        ...prev,
-        wateringFrequency: frequency,
-        nextScheduledWatering: nextDate
-      };
-    });
-  }, []);
-
-  // Function to update custom watering days (for custom frequency)
-  const setCustomWateringDays = useCallback((days: number) => {
-    setData(prev => {
-      // Only update next scheduled watering if frequency is custom
-      const now = new Date();
-      const nextDate = prev.wateringFrequency === 'custom' 
-        ? new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
-        : prev.nextScheduledWatering;
-        
-      return {
-        ...prev,
-        customWateringDays: days,
-        nextScheduledWatering: nextDate
-      };
-    });
-  }, []);
-
-  // Function to update optimal moisture range
-  const setOptimalMoistureRange = useCallback((range: [number, number]) => {
-    // Ensure min <= max and values are within 0-100
-    const validRange: [number, number] = [
-      Math.max(0, Math.min(range[0], 100)),
-      Math.max(0, Math.min(range[1], 100))
-    ];
-    
-    // Ensure min <= max
-    if (validRange[0] > validRange[1]) {
-      validRange[0] = validRange[1];
-    }
-    
-    setData(prev => ({
-      ...prev,
-      optimalRange: validRange
-    }));
-  }, []);
+  };
 
   // Check if moisture is critically low (for alerts)
   const isMoistureCritical = data.currentMoisture < data.optimalRange[0] * 0.8;
@@ -342,10 +173,6 @@ export function usePlantData() {
     toggleWateringMode,
     setWateringDuration,
     setFertilizerDuration,
-    setWateringFrequency,
-    setCustomWateringDays,
-    setOptimalMoistureRange,
-    updateFromArduino,
     isMoistureCritical
   };
 }
