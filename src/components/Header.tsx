@@ -1,11 +1,35 @@
 
 import React from 'react';
-import { Flower, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useSerialConnection } from '@/hooks/useSerialConnection';
+import { Flower } from 'lucide-react';
+import { useArduinoSerial } from '@/hooks/useArduinoSerial';
+import ArduinoSettingsMenu from './ArduinoSettingsMenu';
+import { usePlantData } from '@/hooks/usePlantData';
 
 const Header: React.FC = () => {
-  const { isConnected, connectionError } = useSerialConnection();
+  const { isConnected } = useArduinoSerial();
+  const { useSimulation } = usePlantData();
+  
+  // Determine the connection status text and color
+  const connectionStatus = () => {
+    if (isConnected) {
+      return {
+        text: 'Arduino Connected',
+        class: 'bg-green-500 animate-pulse-gentle'
+      };
+    } else if (useSimulation) {
+      return {
+        text: 'Simulation Mode',
+        class: 'bg-blue-500'
+      };
+    } else {
+      return {
+        text: 'Disconnected',
+        class: 'bg-red-500'
+      };
+    }
+  };
+  
+  const status = connectionStatus();
   
   return (
     <header className="bg-card border-b border-border py-3">
@@ -17,15 +41,13 @@ const Header: React.FC = () => {
         
         <div className="flex items-center gap-4">
           <div className="flex items-center">
-            <div className={`h-3 w-3 rounded-full mr-2 ${isConnected ? 'bg-green-500 animate-pulse-gentle' : 'bg-red-500'}`}></div>
+            <div className={`h-3 w-3 rounded-full mr-2 ${status.class}`}></div>
             <span className="text-sm">
-              {isConnected ? 'Arduino Connected' : 'Disconnected'}
+              {status.text}
             </span>
           </div>
           
-          <Button variant="outline" size="icon">
-            <Settings className="h-5 w-5" />
-          </Button>
+          <ArduinoSettingsMenu />
         </div>
       </div>
     </header>

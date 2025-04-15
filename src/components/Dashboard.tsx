@@ -1,72 +1,107 @@
 
 import React from 'react';
-import MoistureGauge from './MoistureGauge';
-import ControlPanel from './ControlPanel';
-import HistoryChart from './HistoryChart';
-import MotorStatus from './MotorStatus';
+import DashboardHeader from './dashboard/DashboardHeader';
+import DashboardStatusCards from './dashboard/DashboardStatusCards';
+import DashboardMainContent from './dashboard/DashboardMainContent';
+import DashboardConfigSection from './dashboard/DashboardConfigSection';
 import NotificationSystem from './NotificationSystem';
-import { usePlantData } from '@/hooks/usePlantData';
-import { Leaf } from 'lucide-react';
+import ArduinoConnection from './ArduinoConnection';
+import PlantProfileSelector from './PlantProfileSelector';
+import { useDashboard } from '@/hooks/useDashboard';
 
 const Dashboard: React.FC = () => {
-  const { 
-    data, 
-    activateWaterMotor, 
-    activateFertilizerMotor, 
+  const {
+    data,
+    lastSyncTime,
+    isLoading,
+    showArduinoComponents,
+    activateWaterMotor,
+    activateFertilizerMotor,
     toggleWateringMode,
     setWateringDuration,
     setFertilizerDuration,
-    isMoistureCritical 
-  } = usePlantData();
+    setWateringFrequency,
+    setCustomWateringDays,
+    setOptimalMoistureRange,
+    handleSelectPlant,
+    handleRefreshData,
+    handleArduinoData,
+    handleSendCommand,
+    handleArduinoConnectionChange,
+    isMoistureCritical
+  } = useDashboard();
   
   return (
     <div className="container py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Leaf className="h-6 w-6 text-plant" />
-          Plant Dashboard
-        </h2>
-        
-        <div className="text-sm text-muted-foreground">
-          Last updated: {new Date().toLocaleTimeString()}
-        </div>
-      </div>
+      <DashboardHeader 
+        onRefreshData={handleRefreshData}
+        lastSyncTime={lastSyncTime}
+        isLoading={isLoading}
+      />
       
       {/* Status Cards */}
-      <MotorStatus 
+      <DashboardStatusCards 
         waterMotorStatus={data.waterMotorStatus}
         fertilizerMotorStatus={data.fertilizerMotorStatus}
         lastWatered={data.lastWatered}
         lastFertilized={data.lastFertilized}
+        isArduinoConnected={showArduinoComponents}
       />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
-        <MoistureGauge 
-          currentMoisture={data.currentMoisture} 
-          optimalRange={data.optimalRange} 
+      {/* Plant Profile Selector */}
+      <div className="mt-6">
+        <PlantProfileSelector
+          selectedPlantId={data.selectedPlantId}
+          onSelectPlant={handleSelectPlant}
         />
-        
-        <ControlPanel 
-          waterMotorStatus={data.waterMotorStatus}
-          fertilizerMotorStatus={data.fertilizerMotorStatus}
-          wateringMode={data.wateringMode}
-          wateringDuration={data.wateringDuration}
-          fertilizerDuration={data.fertilizerDuration}
-          onActivateWater={activateWaterMotor}
-          onActivateFertilizer={activateFertilizerMotor}
-          onToggleMode={toggleWateringMode}
-          onChangeWaterDuration={setWateringDuration}
-          onChangeFertilizerDuration={setFertilizerDuration}
-          lastWatered={data.lastWatered}
-          lastFertilized={data.lastFertilized}
+      </div>
+      
+      {/* Main Content Area */}
+      <DashboardMainContent 
+        currentMoisture={data.currentMoisture}
+        optimalRange={data.optimalRange}
+        waterMotorStatus={data.waterMotorStatus}
+        fertilizerMotorStatus={data.fertilizerMotorStatus}
+        wateringMode={data.wateringMode}
+        wateringDuration={data.wateringDuration}
+        fertilizerDuration={data.fertilizerDuration}
+        lastWatered={data.lastWatered}
+        lastFertilized={data.lastFertilized}
+        historyData={data.historyData}
+        isArduinoConnected={showArduinoComponents}
+        onActivateWater={activateWaterMotor}
+        onActivateFertilizer={activateFertilizerMotor}
+        onToggleMode={toggleWateringMode}
+        onChangeWaterDuration={setWateringDuration}
+        onChangeFertilizerDuration={setFertilizerDuration}
+        onRefreshData={handleRefreshData}
+        isLoading={isLoading}
+      />
+      
+      {/* Plant Config */}
+      <DashboardConfigSection
+        optimalRange={data.optimalRange}
+        wateringFrequency={data.wateringFrequency}
+        customWateringDays={data.customWateringDays}
+        nextScheduledWatering={data.nextScheduledWatering}
+        selectedPlantId={data.selectedPlantId}
+        onChangeFrequency={setWateringFrequency}
+        onChangeCustomDays={setCustomWateringDays}
+        onChangeMoistureRange={setOptimalMoistureRange}
+      />
+      
+      {/* Arduino Connection Card */}
+      <div className="mt-6">
+        <ArduinoConnection 
+          onDataReceived={handleArduinoData}
+          onSendCommand={handleSendCommand}
+          onConnectionChange={handleArduinoConnectionChange}
         />
-        
-        <HistoryChart data={data.historyData} />
       </div>
       
       {/* Invisible notification system */}
       <NotificationSystem 
-        isMoistureCritical={isMoistureCritical} 
+        isMoistureCritical={isMoistureCritical && showArduinoComponents} 
         moistureLevel={data.currentMoisture}
       />
     </div>
