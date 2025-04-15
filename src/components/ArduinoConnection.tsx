@@ -22,6 +22,7 @@ const ArduinoConnection: React.FC<ArduinoConnectionProps> = ({
     isConnected, 
     connectionError, 
     serialAvailable,
+    isConnecting,
     connect, 
     disconnect, 
     sendCommand,
@@ -79,34 +80,47 @@ const ArduinoConnection: React.FC<ArduinoConnectionProps> = ({
         }
       });
       
-      // Send initial status request
-      sendCommand('status');
+      // Send initial status request with a slight delay to ensure connection is ready
+      setTimeout(() => {
+        sendCommand('status').catch(console.error);
+      }, 500);
     }
   }, [isConnected, startReading, sendCommand, onDataReceived]);
 
   // Connect to Arduino
   const handleConnect = async () => {
     setLoading(true);
-    await connect();
-    setLoading(false);
+    try {
+      await connect();
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Disconnect from Arduino
   const handleDisconnect = async () => {
     setLoading(true);
-    await disconnect();
-    setLoading(false);
+    try {
+      await disconnect();
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Forward commands to Arduino
   const handleSendCommand = async (command: string) => {
     setLoading(true);
-    const success = await sendCommand(command);
-    setLastCommandSuccess(success);
-    setLoading(false);
+    let success = false;
     
-    // Also call the parent's onSendCommand handler
-    onSendCommand(command);
+    try {
+      success = await sendCommand(command);
+      setLastCommandSuccess(success);
+      
+      // Also call the parent's onSendCommand handler
+      await onSendCommand(command);
+    } finally {
+      setLoading(false);
+    }
     
     return success;
   };
@@ -161,10 +175,10 @@ const ArduinoConnection: React.FC<ArduinoConnectionProps> = ({
             <Button 
               onClick={handleConnect} 
               className="flex-1"
-              disabled={loading}
+              disabled={loading || isConnecting}
             >
-              {loading && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-              Connect to Arduino
+              {(loading || isConnecting) && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+              {isConnecting ? 'Connecting...' : 'Connect to Arduino'}
             </Button>
           ) : (
             <Button 

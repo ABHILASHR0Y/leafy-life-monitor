@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const saveWateringEvent = async (plantId: string, eventType: 'water' | 'fertilizer', duration: number) => {
   if (!plantId) {
     console.error('Cannot save watering event: No plant ID provided');
-    return;
+    return { success: false, error: 'No plant ID provided' };
   }
   
   try {
@@ -19,11 +19,15 @@ export const saveWateringEvent = async (plantId: string, eventType: 'water' | 'f
       
     if (error) {
       console.error(`Error saving ${eventType} event:`, error);
+      return { success: false, error: error.message };
     } else {
       console.log(`Successfully saved ${eventType} event for plant ${plantId}`);
+      return { success: true };
     }
   } catch (err) {
-    console.error(`Failed to save ${eventType} event:`, err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`Failed to save ${eventType} event:`, errorMessage);
+    return { success: false, error: errorMessage };
   }
 };
 
@@ -31,7 +35,7 @@ export const saveWateringEvent = async (plantId: string, eventType: 'water' | 'f
 export const loadWateringEvents = async (plantId: string) => {
   if (!plantId) {
     console.error('Cannot load watering events: No plant ID provided');
-    return { waterEvents: [], fertEvents: [] };
+    return { waterEvents: [], fertEvents: [], success: false, error: 'No plant ID provided' };
   }
   
   try {
@@ -63,10 +67,18 @@ export const loadWateringEvents = async (plantId: string) => {
 
     return { 
       waterEvents: waterEvents || [], 
-      fertEvents: fertEvents || [] 
+      fertEvents: fertEvents || [],
+      success: !(waterError || fertError),
+      error: waterError ? waterError.message : (fertError ? fertError.message : null)
     };
   } catch (err) {
-    console.error('Failed to load watering events:', err);
-    return { waterEvents: [], fertEvents: [] };
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Failed to load watering events:', errorMessage);
+    return { 
+      waterEvents: [], 
+      fertEvents: [],
+      success: false,
+      error: errorMessage
+    };
   }
 };
